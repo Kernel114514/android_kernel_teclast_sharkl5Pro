@@ -19,6 +19,7 @@ HOST_EXTRACFLAGS += -DNO_YAML
 else
 dtc-objs	+= yamltree.o
 HOSTLDLIBS_dtc	:= -lyaml
+HOSTLOADLIBES_dtc := -lyaml
 endif
 
 # Generated files need one more search path to include headers in source tree
