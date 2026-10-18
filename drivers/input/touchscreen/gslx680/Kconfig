@@ -1,0 +1,5 @@
+config TOUCHSCREEN_GSLX680
+	tristate "Silead GSLX680 Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have a Silead GSLX680 touchscreen.

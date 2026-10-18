@@ -1,0 +1,5 @@
+config TOUCHSCREEN_GT9XX
+	tristate "Goodix GT9xx Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have a Goodix GT9xx touchscreen.

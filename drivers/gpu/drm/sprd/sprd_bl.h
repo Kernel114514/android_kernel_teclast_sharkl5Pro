@@ -20,6 +20,7 @@ struct sprd_backlight {
 	u32 max_level;
 	u32 min_level;
 	u32 dft_level;
+	u32 *levels;
 	u32 scale;
 
 	/* cabc backlight parameters */

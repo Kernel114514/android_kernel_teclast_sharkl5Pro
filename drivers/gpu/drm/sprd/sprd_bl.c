@@ -56,6 +56,9 @@ static int sprd_pwm_backlight_update(struct backlight_device *bd)
 	u64 duty_cycle;
 	u32 level;
 
+	if (bl->levels)
+		bd->props.brightness = bl->levels[bd->props.brightness];
+
 	level = DIV_ROUND_CLOSEST_ULL(bd->props.brightness *
 			(bl->max_level - bl->min_level), 255);
 
@@ -97,11 +100,25 @@ static int sprd_backlight_parse_dt(struct device *dev,
 			struct sprd_backlight *bl)
 {
 	struct device_node *node = dev->of_node;
+	struct property *prop;
+	int length;
 	u32 value;
 	int ret;
 
 	if (!node)
 		return -ENODEV;
+
+	prop = of_find_property(node, "sprd,brightness-levels", &length);
+	if (prop && length >= sizeof(u32)) {
+		bl->levels = devm_kzalloc(dev, length, GFP_KERNEL);
+		if (!bl->levels)
+			return -ENOMEM;
+
+		ret = of_property_read_u32_array(node, "sprd,brightness-levels",
+						 bl->levels, length / sizeof(u32));
+		if (ret < 0)
+			return ret;
+	}
 
 	ret = of_property_read_u32(node, "sprd,max-brightness-level", &value);
 	if (!ret)

@@ -156,9 +156,14 @@ static const struct sc27xx_fgu_variant_data sc2720_info = {
 	.clk_en = SC2720_CLK_EN0,
 };
 
+static const struct sc27xx_fgu_variant_data sc2721_info = {
+	.module_en = SC2720_MODULE_EN0,
+	.clk_en = SC2720_CLK_EN0,
+};
+
 static int sc27xx_fgu_cap_to_clbcnt(struct sc27xx_fgu_data *data, int capacity);
 static void sc27xx_fgu_low_capacity_calibration(struct sc27xx_fgu_data *data,
-						int cap, int int_mode);
+						int cap, int int_mode, int chg_sts);
 static int sc27xx_fgu_get_temp(struct sc27xx_fgu_data *data, int *temp);
 static void sc27xx_fgu_adjust_cap(struct sc27xx_fgu_data *data, int cap);
 
@@ -278,7 +283,7 @@ static bool sc27xx_fgu_is_first_poweron(struct sc27xx_fgu_data *data)
 	return false;
 }
 
-static int sc27xx_fgu_save_boot_mode(struct sc27xx_fgu_data *data,
+static noinline int sc27xx_fgu_save_boot_mode(struct sc27xx_fgu_data *data,
 				     int boot_mode)
 {
 	int ret;
@@ -525,7 +530,7 @@ static int sc27xx_fgu_get_cur_now(struct sc27xx_fgu_data *data, int *val)
 	return 0;
 }
 
-static int sc27xx_fgu_get_capacity(struct sc27xx_fgu_data *data, int *cap)
+static int sc27xx_fgu_get_capacity(struct sc27xx_fgu_data *data, int *cap, int chg_sts)
 {
 	int ret, cur_clbcnt, delta_clbcnt, delta_cap, temp, temp_cap;
 
@@ -580,7 +585,7 @@ static int sc27xx_fgu_get_capacity(struct sc27xx_fgu_data *data, int *cap)
 			*cap = 100;
 	}
 
-	sc27xx_fgu_low_capacity_calibration(data, *cap, false);
+	sc27xx_fgu_low_capacity_calibration(data, *cap, false, chg_sts);
 
 	return 0;
 }
@@ -793,9 +798,11 @@ static int sc27xx_fgu_get_status(struct sc27xx_fgu_data *data, int *status)
 			return ret;
 
 		*status = val.intval;
+		return 0;
 	}
 
-	return ret;
+	*status = POWER_SUPPLY_STATUS_DISCHARGING;
+	return 0;
 }
 
 static int sc27xx_fgu_get_property(struct power_supply *psy,
@@ -804,17 +811,22 @@ static int sc27xx_fgu_get_property(struct power_supply *psy,
 {
 	struct sc27xx_fgu_data *data = power_supply_get_drvdata(psy);
 	int ret = 0;
-	int value;
+	int value, status = 0;
+
+	if (psp == POWER_SUPPLY_PROP_STATUS ||
+	    psp == POWER_SUPPLY_PROP_CAPACITY) {
+		ret = sc27xx_fgu_get_status(data, &status);
+		if (ret) {
+			dev_err(data->dev, "failed to get charger status\n");
+			return ret;
+		}
+	}
 
 	mutex_lock(&data->lock);
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
-		ret = sc27xx_fgu_get_status(data, &value);
-		if (ret)
-			goto error;
-
-		val->intval = value;
+		val->intval = status;
 		break;
 
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -847,7 +859,7 @@ static int sc27xx_fgu_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CAPACITY:
-		ret = sc27xx_fgu_get_capacity(data, &value);
+		ret = sc27xx_fgu_get_capacity(data, &value, status);
 		if (ret)
 			goto error;
 
@@ -1022,19 +1034,13 @@ static void sc27xx_fgu_adjust_cap(struct sc27xx_fgu_data *data, int cap)
 }
 
 static void sc27xx_fgu_low_capacity_calibration(struct sc27xx_fgu_data *data,
-						int cap, int int_mode)
+						int cap, int int_mode, int chg_sts)
 {
-	int ret, ocv, chg_sts, adc;
+	int ret, ocv, adc;
 
 	ret = sc27xx_fgu_get_vbat_ocv(data, &ocv);
 	if (ret) {
 		dev_err(data->dev, "get battery ocv error.\n");
-		return;
-	}
-
-	ret = sc27xx_fgu_get_status(data, &chg_sts);
-	if (ret) {
-		dev_err(data->dev, "get charger status error.\n");
 		return;
 	}
 
@@ -1098,7 +1104,7 @@ static void sc27xx_fgu_low_capacity_calibration(struct sc27xx_fgu_data *data,
 static irqreturn_t sc27xx_fgu_interrupt(int irq, void *dev_id)
 {
 	struct sc27xx_fgu_data *data = dev_id;
-	int ret, cap;
+	int ret, cap, chg_sts;
 	u32 status;
 
 	mutex_lock(&data->lock);
@@ -1120,11 +1126,15 @@ static irqreturn_t sc27xx_fgu_interrupt(int irq, void *dev_id)
 	if (!(status & SC27XX_FGU_LOW_OVERLOAD_INT))
 		goto out;
 
-	ret = sc27xx_fgu_get_capacity(data, &cap);
+	ret = sc27xx_fgu_get_status(data, &chg_sts);
 	if (ret)
 		goto out;
 
-	sc27xx_fgu_low_capacity_calibration(data, cap, true);
+	ret = sc27xx_fgu_get_capacity(data, &cap, chg_sts);
+	if (ret)
+		goto out;
+
+	sc27xx_fgu_low_capacity_calibration(data, cap, true, chg_sts);
 
 out:
 	mutex_unlock(&data->lock);
@@ -1624,6 +1634,7 @@ static const struct of_device_id sc27xx_fgu_of_match[] = {
 	{ .compatible = "sprd,sc2731-fgu", .data = &sc2731_info},
 	{ .compatible = "sprd,sc2730-fgu", .data = &sc2730_info},
 	{ .compatible = "sprd,sc2720-fgu", .data = &sc2720_info},
+	{ .compatible = "sprd,sc2721-fgu", .data = &sc2721_info},
 	{ }
 };
 

@@ -3003,8 +3003,8 @@ static int charger_manager_probe(struct platform_device *pdev)
 
 	ret = get_batt_cap(cm, &cm->desc->cap);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to get initial battery capacity\n");
-		return ret;
+		dev_err(&pdev->dev, "Failed to get initial battery capacity, falling back\n");
+		cm->desc->cap = 100;
 	}
 
 	cm->desc->thm_adjust_cur = -EINVAL;

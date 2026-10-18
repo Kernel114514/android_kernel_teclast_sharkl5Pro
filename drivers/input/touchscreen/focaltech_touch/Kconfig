@@ -1,0 +1,5 @@
+config TOUCHSCREEN_FOCALTECH
+	tristate "FocalTech Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have a FocalTech touchscreen.
