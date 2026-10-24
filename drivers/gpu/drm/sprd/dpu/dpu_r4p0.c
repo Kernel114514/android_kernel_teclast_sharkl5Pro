@@ -228,12 +228,6 @@ struct cm_cfg {
 	short coef23;
 };
 
-struct ltm_cfg {
-	u16 limit_hclip;
-	u16 limit_lclip;
-	u16 limit_clip_step;
-};
-
 struct slp_cfg {
 	u8 brightness;
 	u16 brightness_step;
@@ -246,6 +240,9 @@ struct slp_cfg {
 	u8 hist9_index[9];
 	u8 glb_x[3];
 	u16 glb_s[3];
+	u16 limit_hclip;
+	u16 limit_lclip;
+	u16 limit_clip_step;
 	u8 fast_ambient_th;
 	u8 scene_change_percent_th;
 	u8 local_weight;
@@ -292,7 +289,6 @@ enum {
 static struct scale_cfg scale_copy;
 static struct cm_cfg cm_copy;
 static struct slp_cfg slp_copy;
-static struct ltm_cfg ltm_copy;
 static struct gamma_lut gamma_copy;
 static struct threed_lut lut3d_copy;
 static struct hsv_lut hsv_copy;
@@ -1421,10 +1417,8 @@ static void dpu_enhance_backup(u32 id, void *param)
 		pr_info("enhance cm backup\n");
 		break;
 	case ENHANCE_CFG_ID_LTM:
-		memcpy(&ltm_copy, param, sizeof(ltm_copy));
 		enhance_en |= BIT(6);
 		pr_info("enhance ltm backup\n");
-		break;
 	case ENHANCE_CFG_ID_SLP:
 		memcpy(&slp_copy, param, sizeof(slp_copy));
 		if (!cabc_disable) {
@@ -1475,7 +1469,6 @@ static void dpu_enhance_set(struct dpu_context *ctx, u32 id, void *param)
 	struct scale_cfg *scale;
 	struct cm_cfg cm;
 	struct slp_cfg *slp;
-	struct ltm_cfg *ltm;
 	struct gamma_lut *gamma;
 	struct threed_lut *lut3d;
 	struct hsv_lut *hsv;
@@ -1554,14 +1547,8 @@ static void dpu_enhance_set(struct dpu_context *ctx, u32 id, void *param)
 		pr_info("enhance cm set\n");
 		break;
 	case ENHANCE_CFG_ID_LTM:
-		memcpy(&ltm_copy, param, sizeof(struct ltm_cfg));
-		ltm = &ltm_copy;
-		reg->slp_cfg8 = ((ltm->limit_hclip & 0x1ff) << 23) |
-			((ltm->limit_lclip & 0x1ff) << 14) |
-			((ltm->limit_clip_step & 0x1fff) << 0);
-		reg->dpu_enhance_cfg |= BIT(6);
+		enhance_en |= BIT(6);
 		pr_info("enhance ltm set\n");
-		break;
 	case ENHANCE_CFG_ID_SLP:
 		memcpy(&slp_copy, param, sizeof(slp_copy));
 		if (!cabc_disable) {
@@ -1596,12 +1583,16 @@ static void dpu_enhance_set(struct dpu_context *ctx, u32 id, void *param)
 		reg->slp_cfg7 = ((slp->glb_s[0] & 0x1ff) << 23) |
 			((slp->glb_s[1] & 0x1ff) << 14) |
 			((slp->glb_s[2] & 0x1ff) << 5);
+		reg->slp_cfg8 = ((slp->limit_hclip & 0x1ff) << 23) |
+			((slp->limit_lclip & 0x1ff) << 14) |
+			((slp->limit_clip_step & 0x1fff) << 0);
 		reg->slp_cfg9 = ((slp->fast_ambient_th & 0x7f) << 25) |
 			(slp->scene_change_percent_th << 17) |
 			((slp->local_weight & 0xf) << 13) |
 			((slp->fst_pth & 0x7f) << 6);
 		reg->slp_cfg10 = (slp->cabc_endv << 8) | (slp->cabc_startv << 0);
-		reg->dpu_enhance_cfg |= BIT(4);
+		enhance_en |= BIT(4);
+		reg->dpu_enhance_cfg = enhance_en;
 		pr_info("enhance slp set\n");
 		break;
 	case ENHANCE_CFG_ID_GAMMA:
@@ -1710,7 +1701,6 @@ static void dpu_enhance_get(struct dpu_context *ctx, u32 id, void *param)
 	struct scale_cfg *scale;
 	struct epf_cfg *ep;
 	struct slp_cfg *slp;
-	struct ltm_cfg *ltm;
 	struct gamma_lut *gamma;
 	struct threed_lut *lut3d;
 	u32 *p32;
@@ -1775,13 +1765,6 @@ static void dpu_enhance_get(struct dpu_context *ctx, u32 id, void *param)
 		pr_info("enhance cm get\n");
 		break;
 	case ENHANCE_CFG_ID_LTM:
-		ltm = param;
-		val = reg->slp_cfg8;
-		ltm->limit_hclip = (val >> 23) & 0x1ff;
-		ltm->limit_lclip = (val >> 14) & 0x1ff;
-		ltm->limit_clip_step = (val >> 0) & 0x1fff;
-		pr_info("enhance ltm get\n");
-		break;
 	case ENHANCE_CFG_ID_SLP:
 		slp = param;
 		val = reg->slp_cfg0;
@@ -1829,6 +1812,11 @@ static void dpu_enhance_get(struct dpu_context *ctx, u32 id, void *param)
 		slp->glb_s[0] = (val >> 23) & 0x1ff;
 		slp->glb_s[1] = (val >> 14) & 0x1ff;
 		slp->glb_s[2] = (val >> 5) & 0x1ff;
+
+		val = reg->slp_cfg8;
+		slp->limit_hclip = (val >> 23) & 0x1ff;
+		slp->limit_lclip = (val >> 14) & 0x1ff;
+		slp->limit_clip_step = (val >> 0) & 0x1fff;
 
 		val = reg->slp_cfg9;
 		slp->fast_ambient_th = (val >> 25) & 0x7f;
@@ -1891,7 +1879,6 @@ static void dpu_enhance_reload(struct dpu_context *ctx)
 	struct scale_cfg *scale;
 	struct cm_cfg *cm;
 	struct slp_cfg *slp;
-	struct ltm_cfg *ltm;
 	struct gamma_lut *gamma;
 	struct hsv_lut *hsv;
 	struct epf_cfg *epf;
@@ -2003,10 +1990,10 @@ static void dpu_enhance_reload(struct dpu_context *ctx)
 	}
 
 	if (enhance_en & BIT(6)) {
-		ltm = &ltm_copy;
-		reg->slp_cfg8 = ((ltm->limit_hclip & 0x1ff) << 23) |
-			((ltm->limit_lclip & 0x1ff) << 14) |
-			((ltm->limit_clip_step & 0x1fff) << 0);
+		slp = &slp_copy;
+		reg->slp_cfg8 = ((slp->limit_hclip & 0x1ff) << 23) |
+			((slp->limit_lclip & 0x1ff) << 14) |
+			((slp->limit_clip_step & 0x1fff) << 0);
 		pr_info("enhance ltm reload\n");
 	}
 
