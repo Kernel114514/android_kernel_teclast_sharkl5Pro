@@ -40,6 +40,10 @@ static DEFINE_SPINLOCK(pause_on_oops_lock);
 bool crash_kexec_post_notifiers;
 int panic_on_warn __read_mostly;
 
+#ifdef CONFIG_SPRD_EIRQSOFF
+extern void irqsoff_path_panic_msg(void);
+#endif
+
 int panic_timeout = CONFIG_PANIC_TIMEOUT;
 EXPORT_SYMBOL_GPL(panic_timeout);
 
@@ -122,10 +126,15 @@ void nmi_panic(struct pt_regs *regs, const char *msg)
 }
 EXPORT_SYMBOL(nmi_panic);
 
-#ifdef CONFIG_SPRD_SYSDUMP
-	extern void sysdump_enter(int enter_id,
-				const char *reason,
-				struct pt_regs *regs);
+#ifdef CONFIG_SPRD_EMERGENCY_RESTART
+void sprd_emergency_restart(char *cmd)
+{
+	if (cmd != NULL && strstr(cmd, "tospanic")) {
+		machine_restart("tospanic");
+	} else {
+		machine_restart("panic");
+	}
+}
 #endif
 /**
  *	panic - halt the system
@@ -143,7 +152,9 @@ void panic(const char *fmt, ...)
 	int state = 0;
 	int old_cpu, this_cpu;
 	bool _crash_kexec_post_notifiers = crash_kexec_post_notifiers;
-
+#ifdef CONFIG_SPRD_EIRQSOFF
+	irqsoff_path_panic_msg();
+#endif
 	/*
 	 * Disable local interrupts. This will prevent panic_smp_self_stop
 	 * from deadlocking the first cpu that invokes the panic, since
@@ -151,6 +162,7 @@ void panic(const char *fmt, ...)
 	 * after setting panic_cpu) from invoking panic() again.
 	 */
 	local_irq_disable();
+	preempt_disable_notrace();
 
 	/*
 	 * It's possible to come here directly from a panic-assertion and
@@ -186,9 +198,6 @@ void panic(const char *fmt, ...)
 	if (!test_taint(TAINT_DIE) && oops_in_progress <= 1)
 		dump_stack();
 #endif
-#ifdef CONFIG_SPRD_SYSDUMP
-	sysdump_enter(0, buf, NULL);
-#else
 	/*
 	 * If we have crashed and we have a crash kernel loaded let it handle
 	 * everything else.
@@ -215,7 +224,6 @@ void panic(const char *fmt, ...)
 		 */
 		crash_smp_send_stop();
 	}
-#endif
 	/*
 	 * Run any panic handlers, including those that might need to
 	 * add information to the kmsg dump output.
@@ -274,12 +282,16 @@ void panic(const char *fmt, ...)
 		}
 	}
 	if (panic_timeout != 0) {
+#ifdef CONFIG_SPRD_EMERGENCY_RESTART
+		sprd_emergency_restart(buf);
+#else
 		/*
 		 * This will not be a clean reboot, with everything
 		 * shutting down.  But if there is a chance of
 		 * rebooting the system it will be rebooted.
 		 */
 		emergency_restart();
+#endif
 	}
 #ifdef __sparc__
 	{

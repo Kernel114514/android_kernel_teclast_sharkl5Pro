@@ -2,6 +2,7 @@
 #
 # Makefile for the kernel serial device drivers.
 #
+GCOV_PROFILE := $(CONFIG_SERIAL_GCOV)
 
 obj-$(CONFIG_SERIAL_CORE) += serial_core.o
 
@@ -89,6 +90,7 @@ obj-$(CONFIG_SERIAL_FSL_LPUART)	+= fsl_lpuart.o
 obj-$(CONFIG_SERIAL_CONEXANT_DIGICOLOR)	+= digicolor-usart.o
 obj-$(CONFIG_SERIAL_MEN_Z135)	+= men_z135_uart.o
 obj-$(CONFIG_SERIAL_SPRD) += sprd_serial.o
+obj-$(CONFIG_SERIAL_SPRD_EX) += sprd_serial_ex.o
 obj-$(CONFIG_SERIAL_STM32)	+= stm32-usart.o
 obj-$(CONFIG_SERIAL_MVEBU_UART)	+= mvebu-uart.o
 obj-$(CONFIG_SERIAL_PIC32)	+= pic32_uart.o

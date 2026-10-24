@@ -331,19 +331,23 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 		if (dev->port_usb->is_fixed)
 			size = max_t(size_t, size,
 					dev->port_usb->fixed_out_len);
-	} else {
+	} else
 		out = NULL;
-	}
 
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	if (!out || !dev->port_usb || out->uether)
+	if (!out)
+	{
+		spin_unlock_irqrestore(&dev->lock, flags);
 		return -ENOTCONN;
+	}
 
 
+	if (dev->port_usb->is_fixed)
+		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
+	spin_unlock_irqrestore(&dev->lock, flags);
 
-	DBG(dev, "%s: size: %zd\n", __func__, size);
-	skb = alloc_skb(size + NET_IP_ALIGN, gfp_flags);
+	skb = __netdev_alloc_skb(dev->net, size + NET_IP_ALIGN, gfp_flags);
 	if (skb == NULL) {
 		dev->net->stats.rx_over_errors++;
 		ERROR(dev, "alloc rx skb failed\n");
@@ -621,7 +625,7 @@ static int process_rx_w(void *data)
 		skb = skb_dequeue(&dev->rx_frames);
 		if (!skb) {
 			set_current_state(TASK_INTERRUPTIBLE);
-			schedule();
+			schedule_timeout(HZ/5);
 			set_current_state(TASK_RUNNING);
 			continue;
 		}
@@ -1628,6 +1632,7 @@ static const struct net_device_ops sipa_usb_ops = {
 	.ndo_validate_addr = eth_validate_addr,
 };
 
+#ifdef CONFIG_DEBUG_FS
 static int sipa_usb_debug_show(struct seq_file *m, void *v)
 {
 	struct eth_dev *dev = (struct eth_dev *)(m->private);
@@ -1693,6 +1698,7 @@ DEFINE_SIMPLE_ATTRIBUTE(fops_gro_enable,
 			debugfs_gro_enable_get,
 			debugfs_gro_enable_set,
 			"%llu\n");
+#endif /* CONFIG_DEBUG_FS */
 
 static int sipa_usb_debugfs_mknod(void *root, void *data)
 {
@@ -1703,7 +1709,7 @@ static int sipa_usb_debugfs_mknod(void *root, void *data)
 
 	if (!root)
 		return -ENXIO;
-
+#ifdef CONFIG_DEBUG_FS
 	debugfs_create_file("sipa_usb",
 			    0444,
 			    (struct dentry *)root,
@@ -1715,7 +1721,7 @@ static int sipa_usb_debugfs_mknod(void *root, void *data)
 			    (struct dentry *)root,
 			    &gro_enable,
 			    &fops_gro_enable);
-
+#endif
 	return 0;
 }
 

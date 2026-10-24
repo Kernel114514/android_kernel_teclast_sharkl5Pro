@@ -119,6 +119,8 @@ struct dfs_data {
 	struct scene_freq *scenes;
 	unsigned int force_freq;
 	unsigned int backdoor_freq;
+	unsigned int backdoor_count;
+	struct mutex backdoor_mutex;
 	unsigned int init_done;
 };
 
@@ -126,11 +128,12 @@ static struct dfs_data *g_dfs_data;
 
 static int dfs_msg_recv(struct smsg *msg, int timeout)
 {
-	int err = 0;
+	int err;
+	struct device *dev = g_dfs_data->dev;
 
 	err = smsg_recv(SIPC_ID_PM_SYS, msg, timeout);
 	if (err < 0) {
-		pr_err("%s, dfs receive failed:%d\n", __func__, err);
+		dev_err(dev, "dfs receive failed:%d\n", err);
 		return err;
 	}
 	if (msg->channel == SMSG_CH_PM_CTRL &&
@@ -142,15 +145,16 @@ static int dfs_msg_recv(struct smsg *msg, int timeout)
 static int dfs_msg_send(struct smsg *msg, unsigned int cmd, int timeout,
 		 unsigned int value)
 {
-	int err = 0;
+	int err;
+	struct device *dev = g_dfs_data->dev;
 
 	smsg_set(msg, SMSG_CH_PM_CTRL, SMSG_TYPE_DFS, cmd, value);
 	err = smsg_send(SIPC_ID_PM_SYS, msg, timeout);
-	pr_debug("%s send: channel=%d, type=%d, flag=0x%04x, value=0x%08x\n",
-	__func__, msg->channel, msg->type, msg->flag, msg->value);
+	dev_dbg(dev, "send: channel=%d, type=%d, flag=0x%x, value=0x%x\n",
+		msg->channel, msg->type, msg->flag, msg->value);
 	if (err < 0) {
-		pr_err("%s, dfs send failed, freq:%d, cmd:%d\n",
-		       __func__, value, cmd);
+		dev_err(dev, "dfs send failed, freq:%d, cmd:%d\n",
+			value, cmd);
 		return err;
 	}
 	return 0;
@@ -160,6 +164,7 @@ static int dfs_msg_send(struct smsg *msg, unsigned int cmd, int timeout,
 static int dfs_msg_parse_ret(struct smsg *msg)
 {
 	unsigned int err;
+	struct device *dev = g_dfs_data->dev;
 
 	switch (msg->flag) {
 	case DFS_RET_ADJ_OK:
@@ -171,49 +176,49 @@ static int dfs_msg_parse_ret(struct smsg *msg)
 		err = 0;
 		break;
 	case DFS_RET_ADJ_VER_FAIL:
-		pr_info("%s, dfs verify fail!current freq:%d\n", __func__,
-						       msg->value);
+		dev_info(dev, "dfs verify fail!current freq:%d\n",
+			 msg->value);
 		err = -EIO;
 		break;
 	case DFS_RET_ADJ_BUSY:
-		pr_info("%s, dfs busy!current freq:%d\n", __func__,
-							msg->value);
+		dev_info(dev, "dfs busy!current freq:%d\n",
+			 msg->value);
 		err = -EBUSY;
 		break;
 	case DFS_RET_ADJ_NOCHANGE:
-		pr_info("%s, dfs no change!current freq:%d\n", __func__,
-						       msg->value);
+		dev_info(dev, "dfs no change!current freq:%d\n",
+			 msg->value);
 		err = -EFAULT;
 		break;
 	case DFS_RET_ADJ_FAIL:
-		pr_info("%s, dfs fail!current freq:%d\n", __func__,
-							msg->value);
+		dev_info(dev, "dfs fail!current freq:%d\n",
+			 msg->value);
 		err = -EFAULT;
 		break;
 	case DFS_RET_DISABLE:
-		pr_info("%s, dfs is disabled!current freq:%d\n", __func__,
-						       msg->value);
+		dev_info(dev, "dfs is disabled!current freq:%d\n",
+			 msg->value);
 		err = -EPERM;
 		break;
 	case DFS_RET_ON_OFF_FAIL:
-		pr_err("%s, dfs enable verify failed", __func__);
+		dev_err(dev, "dfs enable verify failed\n");
 		err = -EINVAL;
 		break;
 	case DFS_RET_INQ_FAIL:
-		pr_err("%s, dfs inquire failed", __func__);
+		dev_err(dev, "dfs inquire failed\n");
 		err = -EINVAL;
 		break;
 	case DFS_RET_SET_FAIL:
-		pr_err("%s, dfs set failed", __func__);
+		dev_err(dev, "dfs set failed\n");
 		err = -EINVAL;
 		break;
 	case DFS_RET_INVALID_CMD:
-		pr_err("%s, no this command", __func__);
+		dev_info(dev, "no this command\n");
 		err = -EINVAL;
 		break;
 	default:
-		pr_info("%s, dfs invalid cmd:%x!current freq:%d\n", __func__,
-		       msg->flag, msg->value);
+		dev_info(dev, "dfs invalid cmd:%x!current freq:%d\n",
+			 msg->flag, msg->value);
 		err = -EINVAL;
 		break;
 	}
@@ -224,18 +229,19 @@ static int dfs_msg_parse_ret(struct smsg *msg)
 static int dfs_msg(unsigned int *data, unsigned int value,
 			unsigned int cmd, unsigned int wait)
 {
-	int err = 0;
+	int err;
 	struct smsg msg;
+	struct device *dev = g_dfs_data->dev;
 
 	err = dfs_msg_send(&msg, cmd, msecs_to_jiffies(100), value);
 	if (err < 0) {
-		pr_err("%s, dfs msg send failed: %x\n", __func__, cmd);
+		dev_err(dev, "dfs msg send failed: %x\n", cmd);
 		return err;
 	}
 
 	err = dfs_msg_recv(&msg, msecs_to_jiffies(wait));
 	if (err < 0) {
-		pr_err("%s, dfs msg receive failed: %x\n", __func__, cmd);
+		dev_err(dev, "dfs msg receive failed: %x\n", cmd);
 		return err;
 	}
 
@@ -260,7 +266,7 @@ static int dfs_vote(unsigned int freq, unsigned int magic)
 
 int dfs_enable(void)
 {
-	int err = 0;
+	int err;
 	unsigned int data;
 
 	err = dfs_msg(&data, 0, DFS_CMD_ENABLE, 2000);
@@ -270,7 +276,7 @@ int dfs_enable(void)
 
 int dfs_disable(void)
 {
-	int err = 0;
+	int err;
 	unsigned int data;
 
 	err = dfs_msg(&data, 0, DFS_CMD_DISABLE, 2000);
@@ -280,7 +286,7 @@ int dfs_disable(void)
 
 int dfs_auto_enable(void)
 {
-	int err = 0;
+	int err;
 	unsigned int data;
 
 	err = dfs_msg(&data, 0, DFS_CMD_AUTO_ENABLE, 2000);
@@ -290,7 +296,7 @@ int dfs_auto_enable(void)
 
 int dfs_auto_disable(void)
 {
-	int err = 0;
+	int err;
 	unsigned int data;
 
 	err = dfs_msg(&data, 0, DFS_CMD_AUTO_DISABLE, 2000);
@@ -361,6 +367,7 @@ int scene_dfs_request(char *scenario)
 {
 	struct scene_freq *scene;
 	int err;
+	struct device *dev = g_dfs_data->dev;
 
 	if (g_dfs_data == NULL)
 		return -ENOENT;
@@ -368,12 +375,16 @@ int scene_dfs_request(char *scenario)
 		return -ENOENT;
 	scene = find_scene(scenario);
 	if (scene == NULL) {
-		pr_err("%s, The scene: %s is invalid\n", __func__, scenario);
+		dev_err(dev, "request dfs!the scene: %s is invalid\n",
+			scenario);
 		return -EINVAL;
 	}
 	add_scene(scene);
 	trace_sprd_scene(scene, 1);
-	err = send_scene_request(scene->vote_magic);
+	if (unlikely(scene->scene_freq == 0xbacd))
+		err = set_backdoor();
+	else
+		err = send_scene_request(scene->vote_magic);
 	return err;
 }
 EXPORT_SYMBOL(scene_dfs_request);
@@ -382,6 +393,7 @@ int scene_exit(char *scenario)
 {
 	struct scene_freq *scene;
 	int err;
+	struct device *dev = g_dfs_data->dev;
 
 	if (g_dfs_data == NULL)
 		return -ENOENT;
@@ -389,12 +401,15 @@ int scene_exit(char *scenario)
 		return -ENOENT;
 	scene = find_scene(scenario);
 	if (scene == NULL) {
-		pr_err("%s, The scene: %s is invalid\n", __func__, scenario);
+		dev_err(dev, "exit scene: %s is invalid\n", scenario);
 		return -EINVAL;
 	}
 	del_scene(scene);
 	trace_sprd_scene(scene, 0);
-	err = send_scene_request(scene->vote_magic);
+	if (unlikely(scene->scene_freq == 0xbacd))
+		err = reset_backdoor();
+	else
+		err = send_scene_request(scene->vote_magic);
 	return err;
 }
 EXPORT_SYMBOL(scene_exit);
@@ -403,6 +418,7 @@ int change_scene_freq(char *scenario, unsigned int freq)
 {
 	struct scene_freq *scene;
 	int err;
+	struct device *dev = g_dfs_data->dev;
 
 	if (g_dfs_data == NULL)
 		return -ENOENT;
@@ -410,7 +426,8 @@ int change_scene_freq(char *scenario, unsigned int freq)
 		return -ENOENT;
 	scene = find_scene(scenario);
 	if (scene == NULL) {
-		pr_err("%s, The scene: %s is invalid\n", __func__, scenario);
+		dev_err(dev, "change freq!the scene: %s is invalid\n",
+			scenario);
 		return -EINVAL;
 	}
 	spin_lock(&g_dfs_data->lock);
@@ -440,18 +457,30 @@ int force_freq_request(unsigned int freq)
 
 int set_backdoor(void)
 {
+	int err = 0;
 	if (g_dfs_data->backdoor_freq == 0)
 		return -EINVAL;
 
-	return force_freq_request(g_dfs_data->backdoor_freq);
+	mutex_lock(&g_dfs_data->backdoor_mutex);
+	if (g_dfs_data->backdoor_count == 0)
+		err = force_freq_request(g_dfs_data->backdoor_freq);
+	g_dfs_data->backdoor_count++;
+	mutex_unlock(&g_dfs_data->backdoor_mutex);
+	return err;
 }
 
 int reset_backdoor(void)
 {
+	int err = 0;
 	if (g_dfs_data->backdoor_freq == 0)
 		return -EINVAL;
 
-	return dfs_auto_enable();
+	mutex_lock(&g_dfs_data->backdoor_mutex);
+	g_dfs_data->backdoor_count--;
+	if (g_dfs_data->backdoor_count == 0)
+		err = dfs_auto_enable();
+	mutex_unlock(&g_dfs_data->backdoor_mutex);
+	return err;
 }
 
 int get_dfs_status(unsigned int *data)
@@ -644,7 +673,7 @@ static int dfs_freq_target(struct device *dev, unsigned long *freq,
 
 	err = force_freq_request(*freq);
 	if (err < 0)
-		pr_err("%s: set freq fail: %d\n", __func__, err);
+		dev_err(dev, "set freq fail: %d\n", err);
 	return err;
 }
 
@@ -662,10 +691,11 @@ static int dfs_smsg_thread(void *dfs_data)
 {
 	struct dfs_data *data = (struct dfs_data *)dfs_data;
 	int i, err;
+	struct device *dev = g_dfs_data->dev;
 
 	err = smsg_ch_open(SIPC_ID_PM_SYS, SMSG_CH_PM_CTRL, -1);
 	if (err < 0) {
-		pr_err("%s, open sipc channel failed:%d\n", __func__, err);
+		dev_err(dev, "open sipc channel failed:%d\n", err);
 		return 0;
 	}
 
@@ -734,13 +764,13 @@ static int dfs_auto_freq_probe(struct platform_device *pdev)
 	int err, i;
 
 	if (g_dfs_data != NULL) {
-		pr_err("dfs core can used by single device only");
+		dev_err(dev, "dfs core can used by single device only\n");
 		return -ENOMEM;
 	}
 
 	err = of_property_read_u32(dev->of_node, "freq-num", &freq_num);
 	if (err != 0) {
-		pr_err("failed read freqnum\n");
+		dev_err(dev, "failed read freqnum\n");
 		freq_num = 8;
 	}
 	scene_num = of_property_count_strings(dev->of_node, "sprd-scene");
@@ -776,9 +806,11 @@ static int dfs_auto_freq_probe(struct platform_device *pdev)
 	err = of_property_read_u32(dev->of_node, "backdoor",
 					&data->backdoor_freq);
 	if (err != 0) {
-		pr_err("failed read freqnum\n");
+		dev_warn(dev, "failed read freqnum\n");
 		data->backdoor_freq = 0;
 	}
+	data->backdoor_count = 0;
+	mutex_init(&data->backdoor_mutex);
 
 	err = of_property_read_u32_array(dev->of_node, "overflow",
 					data->overflow, freq_num);
@@ -811,7 +843,7 @@ static int dfs_auto_freq_probe(struct platform_device *pdev)
 	data->profile->exit = dfs_exit;
 
 	data->devfreq = devfreq_add_device(data->dev, data->profile,
-						"sprd_governor", NULL);
+						"sprd-governor", NULL);
 	if (IS_ERR(data->devfreq)) {
 		err = PTR_ERR(data->devfreq);
 		goto err_data;
@@ -863,7 +895,7 @@ static struct platform_driver dfs_auto_freq_drvier = {
 	.remove = dfs_auto_freq_remove,
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = "sprd_dfs_auto",
+		.name = "sprd-dfs-auto",
 #ifdef CONFIG_OF
 		.of_match_table = dfs_auto_freq_match,
 #endif

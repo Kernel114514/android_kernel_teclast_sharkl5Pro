@@ -125,15 +125,11 @@ static long vsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = vsp_clk_enable(&vsp_hw_dev);
 		if (ret == 0)
 			vsp_fp->is_clock_enabled = 1;
-		if (vsp_hw_dev.iommu_exist_flag)
-			sprd_iommu_resume(vsp_hw_dev.vsp_dev);
 		break;
 
 	case VSP_DISABLE:
 		pr_debug("vsp ioctl VSP_DISABLE\n");
 		if (vsp_fp->is_clock_enabled == 1) {
-			if (vsp_hw_dev.iommu_exist_flag)
-				sprd_iommu_suspend(vsp_hw_dev.vsp_dev);
 			clr_vsp_interrupt_mask(&vsp_hw_dev,
 				sprd_vsp_base, vsp_glb_reg_base);
 			vsp_fp->is_clock_enabled = 0;
@@ -336,7 +332,7 @@ static long vsp_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return -EINVAL;
 		}
 
-		codec_counter = codec_instance_count[vsp_fp->codec_id];
+		codec_counter = atomic_read(&vsp_instance_cnt);
 		put_user(codec_counter, (int __user *)arg);
 		pr_debug("total  counter %d current codec-id %d\n",
 			codec_counter, vsp_fp->codec_id);
@@ -635,8 +631,6 @@ static int vsp_release(struct inode *inode, struct file *filp)
 
 	if (vsp_fp->is_clock_enabled) {
 		pr_err("error occurred and close clock\n");
-		if (vsp_hw_dev.iommu_exist_flag)
-			sprd_iommu_suspend(vsp_hw_dev.vsp_dev);
 		vsp_fp->is_clock_enabled = 0;
 		vsp_clk_disable(&vsp_hw_dev);
 	}

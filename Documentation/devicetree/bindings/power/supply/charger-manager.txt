@@ -5,7 +5,9 @@ Required properties :
  - compatible : "charger-manager"
  - <>-supply : for regulator consumer
  - cm-num-chargers : number of chargers
+ - cm-num-fast-chargers : number of fast chargers
  - cm-chargers : name of chargers
+ - cm-fast-chargers : name of fast chargers
  - cm-fuel-gauge : name of battery fuel gauge
  - subnode <regulator> :
 	- cm-regulator-name : name of charger regulator
@@ -39,12 +41,17 @@ Optional properties :
    the corresponding terminate voltage, which is used to adjust the charging
    current according to different battery temperature to improve charging
    efficiency. The current unit is microamp and terminate voltage unit is microvolt.
+ - monitored-battery: Phandle of battery characteristics devicetree node.
+ - cm-capacity-track: the capacity track configuration option, if configured, Will
+   automatically adjust the battery capacity.
 Example :
 	charger-manager@0 {
 		compatible = "charger-manager";
 		chg-reg-supply = <&charger_regulator>;
 
 		cm-name = "battery";
+		monitored-battery = <&bat>;
+		cm-capacity-track;
 		/* Always polling ON : 30s */
 		cm-poll-mode = <1>;
 		cm-poll-interval = <30000>;
@@ -56,7 +63,9 @@ Example :
 		cm-battery-stat = <3>;
 
 		cm-num-chargers = <3>;
+		cm-num-fast-chargers = <2>;
 		cm-chargers = "charger0", "charger1", "charger2";
+		cm-fast-chargers = "fast_charger0", "fast_charger1";
 
 		cm-fuel-gauge = "fuelgauge0";
 

@@ -47,6 +47,8 @@
 #define CONF_DELIMITERS " =\n\r\t"
 #define CONF_VALUES_DELIMITERS "=\n\r\t"
 #define CONF_MAX_LINE_LEN 255
+#define WCN_MODEM_NAME "wcnmodem"
+
 static const char *prefix = "fstab.s";
 static char fstab_name[128];
 static char fstab_dir[FSTAB_PATH_NUM][32] = {
@@ -78,14 +80,15 @@ static char *fgets(char *buf, int buf_len, struct file *fp)
 
 
 
-static int load_fstab_conf(const char *p_path, char *WCN_PATH)
+static int load_fstab_conf(const char *p_path, char *wcn_path)
 {
 	struct file *p_file;
 	char *p_name;
-	char line[CONF_MAX_LINE_LEN+1];
+	char line[CONF_MAX_LINE_LEN + 1];
 	char *p;
 	char *temp;
 	bool match_flag;
+	int off;
 
 	match_flag = false;
 	p = line;
@@ -109,12 +112,11 @@ static int load_fstab_conf(const char *p_path, char *WCN_PATH)
 		if (p_name != NULL) {
 			temp = strstr(p_name, "userdata");
 			if (temp != NULL) {
-				snprintf(WCN_PATH, strlen(p_name)+1,
-					"%s", p_name);
-				WCN_PATH[strlen(WCN_PATH) - strlen(temp)]
-					= '\0';
-				snprintf(WCN_PATH, strlen(WCN_PATH)+9,
-					"%s%s", WCN_PATH, "wcnmodem");
+				off = snprintf(wcn_path, strlen(p_name) + 1,
+					       "%s", p_name);
+				off -= strlen(temp);
+				snprintf(wcn_path + off, strlen(WCN_MODEM_NAME)
+					 + 1, "%s", WCN_MODEM_NAME);
 				match_flag = true;
 				break;
 			}

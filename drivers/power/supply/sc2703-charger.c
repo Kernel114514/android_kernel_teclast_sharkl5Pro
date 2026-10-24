@@ -44,6 +44,8 @@
 #define SC2703_OTG_RETRY_TIMES		10
 #define SC2703_OTG_VALID_MS		100
 #define SC2703_OTG_NORMAL_VALID_MS	1500
+#define SC2703_CHARGER_VOLTAGE_MAX	6500000
+#define SC2703_FAST_CHARGER_VOLTAGE_MAX	11000000
 
 struct sc2703_charger_info {
 	struct device *dev;
@@ -60,6 +62,7 @@ struct sc2703_charger_info {
 	struct regmap *pmic;
 	u32 charger_detect;
 	bool long_key_detect;
+	bool otg_enable;
 };
 
 /* sc2703 input limit current, Milliamp */
@@ -79,6 +82,9 @@ static const char * const sc2703_fast_charger_supply_name[] = {
 };
 
 static bool need_disable_dcdc;
+static bool sc2703_charger_is_support_fchg(struct sc2703_charger_info *info);
+static int sc2703_charger_get_online(struct sc2703_charger_info *info,
+				     u32 *online);
 
 static int __init boot_mode(char *str)
 {
@@ -529,15 +535,58 @@ static int sc2703_charger_start_charge(struct sc2703_charger_info *info)
 	return 0;
 }
 
+static int
+sc2703_charger_get_charge_voltage(struct sc2703_charger_info *info,
+				  u32 *charge_vol)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret;
+
+	psy = power_supply_get_by_name(SC2703_BATTERY_NAME);
+	if (!psy)
+		return -ENODEV;
+
+	ret = power_supply_get_property(psy,
+				POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE,
+				&val);
+	power_supply_put(psy);
+	if (ret)
+		return ret;
+
+	*charge_vol = val.intval;
+
+	return 0;
+}
+
 static void sc2703_charger_stop_charge(struct sc2703_charger_info *info,
 				       bool present)
 {
-	int mask, ret;
+	int mask, charge_vol, online, ret;
+
+	ret = sc2703_charger_get_charge_voltage(info, &charge_vol);
+	if (ret)
+		return;
+
+	ret = sc2703_charger_get_online(info, &online);
+	if (ret)
+		return;
+
+	if (!online)
+		need_disable_dcdc = true;
+	else if (sc2703_charger_is_support_fchg(info) &&
+		 charge_vol > SC2703_FAST_CHARGER_VOLTAGE_MAX)
+		need_disable_dcdc = true;
+	else if (!sc2703_charger_is_support_fchg(info) &&
+		 charge_vol > SC2703_CHARGER_VOLTAGE_MAX)
+		need_disable_dcdc = true;
 
 	if (need_disable_dcdc)
 		mask = SC2703_CHG_EN_MASK | SC2703_DCDC_EN_MASK;
 	else
 		mask = SC2703_CHG_EN_MASK;
+
+	need_disable_dcdc = false;
 
 	if (present) {
 		ret = regmap_update_bits(info->regmap, SC2703_DCDC_CTRL_A,
@@ -1091,17 +1140,8 @@ static void sc2703_charger_detect_status(struct sc2703_charger_info *info)
 static int sc2703_charger_vbus_is_enabled(struct regulator_dev *dev)
 {
 	struct sc2703_charger_info *info = rdev_get_drvdata(dev);
-	int ret;
-	u32 val;
 
-	ret = regmap_read(info->regmap, SC2703_DCDC_CTRL_A, &val);
-	if (ret) {
-		dev_err(info->dev, "failed to get sc2703 otg status.\n");
-		return ret;
-	}
-	val &= SC2703_OTG_EN_MASK;
-
-	return val;
+	return info->otg_enable;
 }
 
 static int sc2703_charger_enable_otg(struct regulator_dev *dev)
@@ -1178,6 +1218,8 @@ static int sc2703_charger_enable_otg(struct regulator_dev *dev)
 		return ret;
 	}
 
+	info->otg_enable = true;
+
 	schedule_delayed_work(&info->otg_work,
 			      msecs_to_jiffies(SC2703_OTG_VALID_MS));
 
@@ -1189,6 +1231,7 @@ static int sc2703_charger_disable_otg(struct regulator_dev *dev)
 	struct sc2703_charger_info *info = rdev_get_drvdata(dev);
 	int ret;
 
+	info->otg_enable = false;
 	cancel_delayed_work_sync(&info->otg_work);
 
 	/* Disable 2703 otg mode */

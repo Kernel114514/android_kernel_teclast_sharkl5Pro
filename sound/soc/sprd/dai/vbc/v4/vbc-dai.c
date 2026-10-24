@@ -146,6 +146,22 @@ static const char *dai_id_to_str(int dai_id)
 		[BE_DAI_ID_FM_HIFI] = TO_STRING(BE_DAI_ID_FM_HIFI),
 		[BE_DAI_ID_LOOP_HIFI] = TO_STRING(BE_DAI_ID_LOOP_HIFI),
 		[BE_DAI_ID_FM_DSP_HIFI] = TO_STRING(BE_DAI_ID_FM_DSP_HIFI),
+		[BE_DAI_ID_HFP] = TO_STRING(BE_DAI_ID_HFP),
+		[BE_DAI_ID_RECOGNISE_CAPTURE] =
+			TO_STRING(BE_DAI_ID_RECOGNISE_CAPTURE),
+		[BE_DAI_ID_VOICE_PCM_P] = TO_STRING(BE_DAI_ID_VOICE_PCM_P),
+
+		[BE_DAI_ID_NORMAL_AP01_P_SMTPA] =
+			TO_STRING(BE_DAI_ID_NORMAL_AP01_P_SMTPA),
+		[BE_DAI_ID_NORMAL_AP23_SMTPA] =
+			TO_STRING(BE_DAI_ID_NORMAL_AP23_SMTPA),
+		[BE_DAI_ID_FAST_P_SMTPA] = TO_STRING(BE_DAI_ID_FAST_P_SMTPA),
+		[BE_DAI_ID_OFFLOAD_SMTPA] = TO_STRING(BE_DAI_ID_OFFLOAD_SMTPA),
+		[BE_DAI_ID_VOICE_SMTPA] = TO_STRING(BE_DAI_ID_VOICE_SMTPA),
+		[BE_DAI_ID_VOIP_SMTPA] = TO_STRING(BE_DAI_ID_VOIP_SMTPA),
+		[BE_DAI_ID_FM_SMTPA] = TO_STRING(BE_DAI_ID_FM_SMTPA),
+		[BE_DAI_ID_LOOP_SMTPA] = TO_STRING(BE_DAI_ID_LOOP_SMTPA),
+		[BE_DAI_ID_FM_DSP_SMTPA] = TO_STRING(BE_DAI_ID_FM_DSP_SMTPA),
 	};
 
 	if (dai_id >= BE_DAI_ID_MAX) {
@@ -185,6 +201,10 @@ static const char *scene_id_to_str(int scene_id)
 		[VBC_DAI_ID_BT_SCO_CAPTURE_DSP] =
 			TO_STRING(VBC_DAI_ID_BT_SCO_CAPTURE_DSP),
 		[VBC_DAI_ID_FM_DSP] = TO_STRING(VBC_DAI_ID_FM_DSP),
+		[VBC_DAI_ID_HFP] = TO_STRING(VBC_DAI_ID_HFP),
+		[VBC_DAI_ID_RECOGNISE_CAPTURE] =
+			TO_STRING(VBC_DAI_ID_RECOGNISE_CAPTURE),
+		[VBC_DAI_ID_VOICE_PCM_P] = TO_STRING(VBC_DAI_ID_VOICE_PCM_P),
 	};
 
 	if (scene_id >= VBC_DAI_ID_MAX) {
@@ -271,12 +291,14 @@ static int check_be_dai_id(int be_dai_id)
 	case BE_DAI_ID_NORMAL_AP01_USB:
 	case BE_DAI_ID_NORMAL_AP01_P_BTSCO:
 	case BE_DAI_ID_NORMAL_AP01_P_HIFI:
+	case BE_DAI_ID_NORMAL_AP01_P_SMTPA:
 	case BE_DAI_ID_DUMP:
 		scene_id = VBC_DAI_ID_NORMAL_AP01;
 		break;
 	case BE_DAI_ID_NORMAL_AP23_CODEC:
 	case BE_DAI_ID_NORMAL_AP23_USB:
 	case BE_DAI_ID_NORMAL_AP23_HIFI:
+	case BE_DAI_ID_NORMAL_AP23_SMTPA:
 		scene_id = VBC_DAI_ID_NORMAL_AP23;
 		break;
 	case BE_DAI_ID_CAPTURE_DSP_CODEC:
@@ -287,34 +309,40 @@ static int check_be_dai_id(int be_dai_id)
 	case BE_DAI_ID_FAST_P_USB:
 	case BE_DAI_ID_FAST_P_BTSCO:
 	case BE_DAI_ID_FAST_P_HIFI:
+	case BE_DAI_ID_FAST_P_SMTPA:
 		scene_id = VBC_DAI_ID_FAST_P;
 		break;
 	case BE_DAI_ID_OFFLOAD_CODEC:
 	case BE_DAI_ID_OFFLOAD_USB:
 	case BE_DAI_ID_OFFLOAD_HIFI:
+	case BE_DAI_ID_OFFLOAD_SMTPA:
 		scene_id = VBC_DAI_ID_OFFLOAD;
 		break;
 	case BE_DAI_ID_VOICE_CODEC:
 	case BE_DAI_ID_VOICE_USB:
 	case BE_DAI_ID_VOICE_BT:
 	case BE_DAI_ID_VOICE_HIFI:
+	case BE_DAI_ID_VOICE_SMTPA:
 		scene_id = VBC_DAI_ID_VOICE;
 		break;
 	case BE_DAI_ID_VOIP_CODEC:
 	case BE_DAI_ID_VOIP_USB:
 	case BE_DAI_ID_VOIP_BT:
 	case BE_DAI_ID_VOIP_HIFI:
+	case BE_DAI_ID_VOIP_SMTPA:
 		scene_id = VBC_DAI_ID_VOIP;
 		break;
 	case BE_DAI_ID_FM_CODEC:
 	case BE_DAI_ID_FM_USB:
 	case BE_DAI_ID_FM_HIFI:
+	case BE_DAI_ID_FM_SMTPA:
 		scene_id = VBC_DAI_ID_FM;
 		break;
 	case BE_DAI_ID_LOOP_CODEC:
 	case BE_DAI_ID_LOOP_USB:
 	case BE_DAI_ID_LOOP_BT:
 	case BE_DAI_ID_LOOP_HIFI:
+	case BE_DAI_ID_LOOP_SMTPA:
 		scene_id = VBC_DAI_ID_LOOP;
 		break;
 	case BE_DAI_ID_PCM_A2DP:
@@ -341,7 +369,17 @@ static int check_be_dai_id(int be_dai_id)
 	case BE_DAI_ID_FM_DSP_CODEC:
 	case BE_DAI_ID_FM_DSP_USB:
 	case BE_DAI_ID_FM_DSP_HIFI:
+	case BE_DAI_ID_FM_DSP_SMTPA:
 		scene_id = VBC_DAI_ID_FM_DSP;
+		break;
+	case BE_DAI_ID_HFP:
+		scene_id = VBC_DAI_ID_HFP;
+		break;
+	case BE_DAI_ID_RECOGNISE_CAPTURE:
+		scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+		break;
+	case BE_DAI_ID_VOICE_PCM_P:
+		scene_id = VBC_DAI_ID_VOICE_PCM_P;
 		break;
 	default:
 		scene_id = VBC_DAI_ID_MAX;
@@ -632,6 +670,13 @@ static int get_startup_scene_dac_id(int scene_id)
 	case VBC_DAI_ID_FM_DSP:
 		dac_id = VBC_DA0;
 		break;
+	case VBC_DAI_ID_HFP:
+		dac_id = VBC_DA1;
+		break;
+	case VBC_DAI_ID_VOICE_PCM_P:
+		/* not used */
+		dac_id = 0;
+		break;
 	default:
 		pr_err("invalid scene_id = %d\n", scene_id);
 		dac_id = 0;
@@ -706,6 +751,16 @@ static int get_startup_scene_adc_id(int scene_id)
 		break;
 	case VBC_DAI_ID_FM_DSP:
 		adc_id = VBC_AD3;
+		break;
+	case VBC_DAI_ID_HFP:
+		adc_id = VBC_AD2;
+		break;
+	case VBC_DAI_ID_RECOGNISE_CAPTURE:
+		adc_id = VBC_AD0;
+		break;
+	case VBC_DAI_ID_VOICE_PCM_P:
+		/* not used */
+		adc_id = 0;
 		break;
 	default:
 		pr_err("invalid scene_id = %d\n", scene_id);
@@ -808,7 +863,15 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	info->id = scene_id;
 	info->stream = stream;
 	para->dac_id = get_startup_scene_dac_id(scene_id);
-	para->adc_id = get_startup_scene_adc_id(scene_id);
+
+	pr_debug("adc_id %d, dmic_chn_sel 0x%x\n", para->adc_id,
+		 vbc_codec->dmic_chn_sel << VBC_DMIC_ADC_ID_SHIFT);
+	if (vbc_codec->dmic_chn_sel)
+		para->adc_id |=
+			vbc_codec->dmic_chn_sel << VBC_DMIC_ADC_ID_SHIFT;
+	else
+		para->adc_id = get_startup_scene_adc_id(scene_id);
+
 	/* vbc_if or iis */
 	for (i = VBC_MUX_ADC0_SOURCE; i < VBC_MUX_ADC_SOURCE_MAX; i++) {
 		para->adc_source[i].id = vbc_codec->mux_adc_source[i].id;
@@ -918,6 +981,8 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	para->ivs_smtpa.enable = check_enable_ivs_smtpa(scene_id,
 		stream, vbc_codec);
 	para->ivs_smtpa.iv_adc_id = get_ivsense_adc_id();
+	/* voice capture type: 1-downlink, 2-uplink, 3-mix down/up link */
+	para->voice_record_type = vbc_codec->voice_capture_type + 1;
 }
 
 static int dsp_startup(struct vbc_codec_priv *vbc_codec,
@@ -2283,6 +2348,195 @@ static struct snd_soc_dai_ops capture_dsp_ops = {
 	.hw_free = scene_capture_dsp_hw_free,
 };
 
+/* recognise capture */
+static int scene_recognise_capture_startup(struct snd_pcm_substream *substream,
+	struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+	int be_dai_id = dai->id;
+	int ret = 0;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_info("%s dai:%s(%d) scene:%s %s\n", __func__,
+		dai_id_to_str(be_dai_id),
+		be_dai_id, scene_id_to_str(scene_id), stream_to_str(stream));
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	startup_lock_mtx(scene_id, stream);
+	startup_add_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 1) {
+		ret = dsp_startup(vbc_codec, scene_id, stream);
+		if (ret)
+			startup_dec_ref(scene_id, stream);
+		else
+			set_scene_flag(scene_id, stream);
+	}
+	startup_unlock_mtx(scene_id, stream);
+
+	return ret;
+}
+
+static void
+scene_recognise_capture_shutdown(struct snd_pcm_substream *substream,
+				 struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+	int be_dai_id = dai->id;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+		 dai_id_to_str(be_dai_id),
+		 be_dai_id, scene_id_to_str(scene_id), stream_to_str(stream));
+
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return;
+	}
+
+	if (!vbc_codec)
+		return;
+
+	startup_lock_mtx(scene_id, stream);
+	startup_dec_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 0) {
+		clr_scene_flag(scene_id, stream);
+		dsp_shutdown(vbc_codec, scene_id, stream);
+	}
+	startup_unlock_mtx(scene_id, stream);
+}
+
+static int
+scene_recognise_capture_hw_params(struct snd_pcm_substream *substream,
+				  struct snd_pcm_hw_params *params,
+				  struct snd_soc_dai *dai)
+{
+	unsigned int rate;
+	int data_fmt = VBC_DAT_L16;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+	int chan_cnt;
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+		 dai_id_to_str(dai->id),
+		 dai->id, scene_id_to_str(scene_id), stream_to_str(stream));
+
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		data_fmt = VBC_DAT_L16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		data_fmt = VBC_DAT_L24;
+		break;
+	default:
+		pr_err("%s, ERR:VBC not support data fmt =%d", __func__,
+			   data_fmt);
+		break;
+	}
+	chan_cnt = params_channels(params);
+	rate = params_rate(params);
+	pr_debug("%s data_fmt=%s, chan=%u, rate =%u\n", __func__,
+		 vbc_data_fmt_to_str(data_fmt), chan_cnt, rate);
+
+	if (chan_cnt > 2)
+		pr_warn("%s channel count invalid\n", __func__);
+
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_add_ref(scene_id, stream);
+	if (hw_param_get_ref(scene_id, stream) == 1) {
+		dsp_hw_params(vbc_codec, scene_id, stream,
+				  chan_cnt, rate, data_fmt);
+	}
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_recognise_capture_hw_free(struct snd_pcm_substream *substream,
+				     struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+		 dai_id_to_str(dai->id),
+		 dai->id, scene_id_to_str(scene_id), stream_to_str(stream));
+
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_dec_ref(scene_id, stream);
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_recognise_capture_trigger(struct snd_pcm_substream *substream,
+				     int cmd, struct snd_soc_dai *dai)
+{
+	int up_down;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_RECOGNISE_CAPTURE;
+	int ret = 0;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s, cmd=%d\n", __func__,
+		 dai_id_to_str(dai->id),
+		 dai->id, scene_id_to_str(scene_id),
+		 stream_to_str(stream), cmd);
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+
+	up_down = triggered_flag(cmd);
+	if (up_down == 1) {
+		trigger_lock_spin(scene_id, stream);
+		trigger_add_ref(scene_id, stream);
+		if (trigger_get_ref(scene_id, stream) == 1)
+			ret = dsp_trigger(vbc_codec, scene_id, stream, up_down);
+
+		trigger_unlock_spin(scene_id, stream);
+	} else {
+		trigger_lock_spin(scene_id, stream);
+		trigger_dec_ref(scene_id, stream);
+		trigger_unlock_spin(scene_id, stream);
+	}
+
+	return ret;
+}
+
+static struct snd_soc_dai_ops recognise_capture_ops = {
+	.startup = scene_recognise_capture_startup,
+	.shutdown = scene_recognise_capture_shutdown,
+	.hw_params = scene_recognise_capture_hw_params,
+	.trigger = scene_recognise_capture_trigger,
+	.hw_free = scene_recognise_capture_hw_free,
+};
+
 /* fast */
 static int scene_fast_startup(struct snd_pcm_substream *substream,
 			      struct snd_soc_dai *dai)
@@ -3338,6 +3592,182 @@ static struct snd_soc_dai_ops voice_capture_ops = {
 	.hw_params = scene_voice_capture_hw_params,
 	.trigger = scene_voice_capture_trigger,
 	.hw_free = scene_voice_capture_hw_free,
+};
+
+/* voice pcm */
+static int scene_voice_pcm_startup(struct snd_pcm_substream *substream,
+				       struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_VOICE_PCM_P;
+	int be_dai_id = dai->id;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+	int ret = 0;
+
+	pr_info("%s dai:%s(%d) scene:%s %s\n", __func__,
+		dai_id_to_str(be_dai_id),
+		be_dai_id, scene_id_to_str(scene_id), stream_to_str(stream));
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	startup_lock_mtx(scene_id, stream);
+	startup_add_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 1) {
+		set_scene_flag(scene_id, stream);
+	}
+	startup_unlock_mtx(scene_id, stream);
+
+	return ret;
+}
+
+static void scene_voice_pcm_shutdown(struct snd_pcm_substream *substream,
+					 struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_VOICE_PCM_P;
+	int be_dai_id = dai->id;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_info("%s dai:%s(%d) scene:%s %s\n", __func__,
+		dai_id_to_str(be_dai_id),
+		be_dai_id, scene_id_to_str(scene_id), stream_to_str(stream));
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return;
+	}
+
+	if (!vbc_codec)
+		return;
+	startup_lock_mtx(scene_id, stream);
+	startup_dec_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 0) {
+		clr_scene_flag(scene_id, stream);
+		dsp_vbc_voice_pcm_play_set(false,
+			vbc_codec->voice_pcm_play_mode);
+	}
+	startup_unlock_mtx(scene_id, stream);
+}
+
+static int scene_voice_pcm_hw_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+{
+	unsigned int rate;
+	int data_fmt = VBC_DAT_L16;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_VOICE_PCM_P;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+	int chan_cnt;
+
+	pr_info("%s dai:%s(%d) scene:%s %s\n", __func__,
+		dai_id_to_str(dai->id),
+		dai->id, scene_id_to_str(scene_id), stream_to_str(stream));
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		data_fmt = VBC_DAT_L16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		data_fmt = VBC_DAT_L24;
+		break;
+	default:
+		pr_err("%s, ERR:VBC not support data fmt =%d", __func__,
+		       data_fmt);
+		break;
+	}
+	chan_cnt = params_channels(params);
+	rate = params_rate(params);
+	pr_info("%s data_fmt=%s, chan=%u, rate =%u\n", __func__,
+		vbc_data_fmt_to_str(data_fmt), chan_cnt, rate);
+	if (chan_cnt > 2)
+		pr_warn("%s channel count invalid\n", __func__);
+
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_add_ref(scene_id, stream);
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_voice_pcm_hw_free(struct snd_pcm_substream *substream,
+				       struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_VOICE_PCM_P;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_info("%s dai:%s(%d) scene:%s %s\n", __func__, dai_id_to_str(dai->id),
+		dai->id, scene_id_to_str(scene_id), stream_to_str(stream));
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_dec_ref(scene_id, stream);
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_voice_pcm_trigger(struct snd_pcm_substream *substream,
+				       int cmd, struct snd_soc_dai *dai)
+{
+	int up_down;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_VOICE_PCM_P;
+	int ret;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_info("%s dai:%s(%d) scene:%s %s, cmd=%d\n", __func__,
+		dai_id_to_str(dai->id),
+		dai->id, scene_id_to_str(scene_id), stream_to_str(stream), cmd);
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+
+	up_down = triggered_flag(cmd);
+	/* default ret is 0 */
+	ret = 0;
+	if (up_down == 1) {
+		trigger_lock_spin(scene_id, stream);
+		trigger_add_ref(scene_id, stream);
+		if (trigger_get_ref(scene_id, stream) == 1) {
+			dsp_vbc_voice_pcm_play_set(true,
+				vbc_codec->voice_pcm_play_mode);
+		}
+		trigger_unlock_spin(scene_id, stream);
+	} else {
+		trigger_lock_spin(scene_id, stream);
+		trigger_dec_ref(scene_id, stream);
+		trigger_unlock_spin(scene_id, stream);
+	}
+
+	return ret;
+}
+
+static struct snd_soc_dai_ops voice_pcm_ops = {
+	.startup = scene_voice_pcm_startup,
+	.shutdown = scene_voice_pcm_shutdown,
+	.hw_params = scene_voice_pcm_hw_params,
+	.trigger = scene_voice_pcm_trigger,
+	.hw_free = scene_voice_pcm_hw_free,
 };
 
 /* voip */
@@ -4800,6 +5230,62 @@ static struct snd_soc_dai_ops fm_dsp_ops = {
 	.hw_free = scene_fm_dsp_hw_free,
 };
 
+void scene_dump_set(enum vbc_dump_position_e pos)
+{
+	switch (pos) {
+	default:
+	case DUMP_POS_DAC0_E:
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC0);
+		break;
+	case DUMP_POS_DAC1_E:
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC1);
+		break;
+	case DUMP_POS_A4:
+		dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0, DAC0_MBDRC_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC0);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_A3:
+		dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0, DAC0_EQ4_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC0);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_A2:
+		dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
+					 DAC0_MIX1_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC0);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_A1:
+		dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
+					 DAC0_SMTHDG_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC0);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_V2:
+		dsp_vbc_mux_loop_da1_set(VBC_MUX_LOOP_DAC1,
+					 DAC1_MIXERDG_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC1);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_V1:
+		dsp_vbc_mux_loop_da1_set(VBC_MUX_LOOP_DAC1,
+					 DAC1_MIXER_OUT);
+		dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
+					     DAC0_DAC1_SEL_DAC1);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
+		break;
+	case DUMP_POS_DAC0_TO_ADC1:
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC1, ADC_IN_DAC0);
+		break;
+	}
+}
+
 /* vbc dump */
 static int scene_dump_startup(struct snd_pcm_substream *substream,
 			      struct snd_soc_dai *dai)
@@ -4830,57 +5316,7 @@ static int scene_dump_startup(struct snd_pcm_substream *substream,
 		}
 		pos = vbc_codec->vbc_dump_position;
 		pr_info("dump scene pos = %s\n", vbc_dumppos2name(pos));
-		switch (pos) {
-		default:
-		case DUMP_POS_DAC0_E:
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC0);
-			break;
-		case DUMP_POS_DAC1_E:
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC1);
-			break;
-		case DUMP_POS_A4:
-			dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
-				DAC0_MBDRC_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC0);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		case DUMP_POS_A3:
-			dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
-				DAC0_EQ4_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC0);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		case DUMP_POS_A2:
-			dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
-				DAC0_MIX1_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC0);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		case DUMP_POS_A1:
-			dsp_vbc_mux_loop_da0_set(VBC_MUX_LOOP_DAC0,
-				DAC0_SMTHDG_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC0);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		case DUMP_POS_V2:
-			dsp_vbc_mux_loop_da1_set(VBC_MUX_LOOP_DAC1,
-				DAC1_MIXERDG_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC1);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		case DUMP_POS_V1:
-			dsp_vbc_mux_loop_da1_set(VBC_MUX_LOOP_DAC1,
-				DAC1_MIXER_OUT);
-			dsp_vbc_mux_loop_da0_da1_set(VBC_MUX_LOOP_DAC0_DAC1,
-						     DAC0_DAC1_SEL_DAC1);
-			dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_DAC_LOOP);
-			break;
-		}
+		scene_dump_set(pos);
 		dsp_vbc_mux_audrcd_set(VBC_MUX_AUDRCD01, AUDRCD_IN_ADC0);
 	}
 	startup_unlock_mtx(scene_id, stream);
@@ -5036,6 +5472,191 @@ static struct snd_soc_dai_ops vbc_dump_ops = {
 	.hw_params = scene_dump_hw_params,
 	.trigger = scene_dump_trigger,
 	.hw_free = scene_dump_hw_free,
+};
+
+/* HFP */
+static int scene_hfp_startup(struct snd_pcm_substream *substream,
+			      struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_HFP;
+	int be_dai_id = dai->id;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+	int ret = 0;
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+			dai_id_to_str(be_dai_id),
+			be_dai_id, scene_id_to_str(scene_id),
+			stream_to_str(stream));
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	startup_lock_mtx(scene_id, stream);
+	startup_add_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 1) {
+		ret = dsp_startup(vbc_codec, scene_id, stream);
+		if (ret)
+			startup_dec_ref(scene_id, stream);
+		else
+			set_scene_flag(scene_id, stream);
+	}
+	startup_unlock_mtx(scene_id, stream);
+
+	return ret;
+}
+
+static void scene_hfp_shutdown(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_HFP;
+	int be_dai_id = dai->id;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+			dai_id_to_str(be_dai_id),
+			be_dai_id, scene_id_to_str(scene_id),
+			stream_to_str(stream));
+	if (scene_id != check_be_dai_id(be_dai_id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return;
+	}
+
+	if (!vbc_codec)
+		return;
+	startup_lock_mtx(scene_id, stream);
+	startup_dec_ref(scene_id, stream);
+	if (startup_get_ref(scene_id, stream) == 0) {
+		clr_scene_flag(scene_id, stream);
+		dsp_shutdown(vbc_codec, scene_id, stream);
+	}
+	startup_unlock_mtx(scene_id, stream);
+}
+
+static int scene_hfp_hw_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+{
+	unsigned int rate;
+	int data_fmt = VBC_DAT_L16;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_HFP;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+	int chan_cnt;
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+			dai_id_to_str(dai->id),
+			dai->id, scene_id_to_str(scene_id),
+			stream_to_str(stream));
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		data_fmt = VBC_DAT_L16;
+		break;
+	case SNDRV_PCM_FORMAT_S24_LE:
+		data_fmt = VBC_DAT_L24;
+		break;
+	default:
+		pr_err("%s, ERR:VBC not support data fmt =%d", __func__,
+		       data_fmt);
+		break;
+	}
+
+	chan_cnt = params_channels(params);
+	rate = params_rate(params);
+	pr_debug("%s data_fmt=%s, chan=%u, rate =%u\n", __func__,
+			vbc_data_fmt_to_str(data_fmt), chan_cnt, rate);
+	if (chan_cnt > 2)
+		pr_warn("%s channel count invalid\n", __func__);
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_add_ref(scene_id, stream);
+	if (hw_param_get_ref(scene_id, stream) == 1) {
+		dsp_hw_params(vbc_codec, scene_id, stream,
+			      chan_cnt, rate, data_fmt);
+	}
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_hfp_hw_free(struct snd_pcm_substream *substream,
+			      struct snd_soc_dai *dai)
+{
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_HFP;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s\n", __func__,
+			dai_id_to_str(dai->id),
+			dai->id, scene_id_to_str(scene_id),
+			stream_to_str(stream));
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	hw_param_lock_mtx(scene_id, stream);
+	hw_param_dec_ref(scene_id, stream);
+	hw_param_unlock_mtx(scene_id, stream);
+
+	return 0;
+}
+
+static int scene_hfp_trigger(struct snd_pcm_substream *substream, int cmd,
+			      struct snd_soc_dai *dai)
+{
+	int up_down;
+	int stream = substream->stream;
+	int scene_id = VBC_DAI_ID_HFP;
+	int ret;
+	struct vbc_codec_priv *vbc_codec = dev_get_drvdata(dai->dev);
+
+	pr_debug("%s dai:%s(%d) scene:%s %s, cmd=%d\n", __func__,
+			dai_id_to_str(dai->id),
+			dai->id, scene_id_to_str(scene_id),
+			stream_to_str(stream), cmd);
+	if (scene_id != check_be_dai_id(dai->id)) {
+		pr_err("%s check_be_dai_id failed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!vbc_codec)
+		return 0;
+	up_down = triggered_flag(cmd);
+	/* default ret is 0 */
+	ret = 0;
+	if (up_down == 1) {
+		trigger_lock_spin(scene_id, stream);
+		trigger_add_ref(scene_id, stream);
+		if (trigger_get_ref(scene_id, stream) == 1)
+			ret = dsp_trigger(vbc_codec, scene_id, stream, up_down);
+		trigger_unlock_spin(scene_id, stream);
+	} else {
+		trigger_lock_spin(scene_id, stream);
+		trigger_dec_ref(scene_id, stream);
+		trigger_unlock_spin(scene_id, stream);
+	}
+
+	return ret;
+}
+
+static struct snd_soc_dai_ops hfp_ops = {
+	.startup = scene_hfp_startup,
+	.shutdown = scene_hfp_shutdown,
+	.hw_params = scene_hfp_hw_params,
+	.trigger = scene_hfp_trigger,
+	.hw_free = scene_hfp_hw_free,
 };
 
 static struct snd_soc_dai_driver vbc_dais[BE_DAI_ID_MAX] = {
@@ -5853,6 +6474,210 @@ static struct snd_soc_dai_driver vbc_dais[BE_DAI_ID_MAX] = {
 		.playback = {
 			.stream_name = "BE_DAI_ID_FM_DSP_HIFI",
 			.aif_name = "BE_IF_ID_FM_DSP_HIFI",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &fm_dsp_ops,
+	},
+	/* 43: BE_DAI_ID_HFP */
+	{
+		.name = TO_STRING(BE_DAI_ID_HFP),
+		.id = BE_DAI_ID_HFP,
+		.playback = {
+			.stream_name = "BE_DAI_HFP_P",
+			.aif_name = "BE_IF_HFP_P",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.capture = {
+			.stream_name = "BE_DAI_HFP_C",
+			.aif_name = "BE_IF_HFP_C",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &hfp_ops,
+	},
+
+	/* 44: BE_DAI_ID_RECOGNISE_CAPTURE */
+	{
+		.name = TO_STRING(BE_DAI_ID_RECOGNISE_CAPTURE),
+		.id = BE_DAI_ID_RECOGNISE_CAPTURE,
+		.capture = {
+			.stream_name = "BE_DAI_CAP_RECOGNISE_CODEC_C",
+			.aif_name = "BE_IF_CAP_RECOGNISE_CODEC_C",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &recognise_capture_ops,
+	},
+
+	/* 45: BE_DAI_ID_VOICE_PCM_P */
+	{
+		.name = TO_STRING(BE_DAI_ID_VOICE_PCM_P),
+		.id = BE_DAI_ID_VOICE_PCM_P,
+		.playback = {
+			.stream_name = "BE_DAI_VOICE_PCM_P",
+			.aif_name = "BE_IF_VOICE_PCM_P",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &voice_pcm_ops,
+	},
+
+	/* 46: BE_DAI_ID_NORMAL_AP01_P_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_NORMAL_AP01_P_SMTPA),
+		.id = BE_DAI_ID_NORMAL_AP01_P_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_NORMAL_AP01_P_SMTPA",
+			.aif_name = "BE_IF_NORMAL_AP01_SMTPA_P",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &normal_ops,
+	},
+	/* 47: BE_DAI_ID_NORMAL_AP23_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_NORMAL_AP23_SMTPA),
+		.id = BE_DAI_ID_NORMAL_AP23_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_NORMAL_AP23_SMTPA",
+			.aif_name = "BE_IF_ID_NORMAL_AP23_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &normal_ap23_ops,
+	},
+	/* 48: BE_DAI_ID_FAST_P_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_FAST_P_SMTPA),
+		.id = BE_DAI_ID_FAST_P_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_FAST_P_SMTPA",
+			.aif_name = "BE_IF_ID_FAST_P_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &fast_ops,
+	},
+	/* 49: BE_DAI_ID_OFFLOAD_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_OFFLOAD_SMTPA),
+		.id = BE_DAI_ID_OFFLOAD_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_OFFLOAD_SMTPA",
+			.aif_name = "BE_IF_ID_OFFLOAD_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &offload_ops,
+	},
+	/* 50: BE_DAI_ID_VOICE_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_VOICE_SMTPA),
+		.id = BE_DAI_ID_VOICE_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_VOICE_SMTPA",
+			.aif_name = "BE_IF_ID_VOICE_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &voice_ops,
+	},
+	/* 51: BE_DAI_ID_VOIP_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_VOIP_SMTPA),
+		.id = BE_DAI_ID_VOIP_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_VOIP_SMTPA",
+			.aif_name = "BE_IF_ID_VOIP_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &voip_ops,
+	},
+	/* 52: BE_DAI_ID_FM_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_FM_SMTPA),
+		.id = BE_DAI_ID_FM_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_FM_SMTPA",
+			.aif_name = "BE_IF_ID_FM_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &fm_ops,
+	},
+	/* 53: BE_DAI_ID_LOOP_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_LOOP_SMTPA),
+		.id = BE_DAI_ID_LOOP_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_LOOP_SMTPA",
+			.aif_name = "BE_IF_ID_LOOP_SMTPA",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.rate_max = 192000,
+			.formats = SPRD_VBC_DAI_PCM_FORMATS,
+		},
+		.probe = sprd_dai_vbc_probe,
+		.ops = &loop_ops,
+	},
+	/* 54: BE_DAI_ID_FM_DSP_SMTPA */
+	{
+		.name = TO_STRING(BE_DAI_ID_FM_DSP_SMTPA),
+		.id = BE_DAI_ID_FM_DSP_SMTPA,
+		.playback = {
+			.stream_name = "BE_DAI_ID_FM_DSP_SMTPA",
+			.aif_name = "BE_IF_ID_FM_DSP_SMTPA",
 			.channels_min = 1,
 			.channels_max = 2,
 			.rates = SNDRV_PCM_RATE_CONTINUOUS,

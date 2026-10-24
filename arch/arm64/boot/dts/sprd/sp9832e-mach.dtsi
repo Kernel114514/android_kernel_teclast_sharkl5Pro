@@ -20,7 +20,7 @@
 			compatible = "android,firmware";
 			vbmeta {
 				compatible = "android,vbmeta";
-				parts = "socko,odmko,boot,recovery,dtbo,l_modem,pm_sys,l_ldsp,l_gdsp";
+				parts = "vbmeta,socko,odmko,boot,dtbo,l_modem,pm_sys,l_ldsp,l_gdsp";
 			};
 		};
 	};
@@ -163,8 +163,8 @@
 			reg = <0x0 0x94020000 0x0 0x002e0000>;
 		};
 
-		logo_reserved: logobuffer@9e000000 {
-			reg = <0x0 0x9e000000 0x0 0x384000>;
+		logo_reserved: logobuffer@beef0000 {
+			reg = <0x0 0xbeef0000 0x0 0x384000>;
 		};
 
 		pstore_reserved: ramoops@bff80000 {

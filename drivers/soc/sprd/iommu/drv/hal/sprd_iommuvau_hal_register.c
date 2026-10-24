@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2019 Spreadtrum Communications Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #include "sprd_iommuvau_hal_register.h"
 
 void mmu_vau_enable(ulong ctrl_base_addr, u32 iommu_id, u32 mmu_enable)
@@ -41,17 +54,8 @@ void mmu_vau_vaorbypass_clkgate_enable_combined(ulong ctrl_base_addr,
 
 }
 
-
-void mmu_vau_clock_gate_enable(ulong ctrl_base_addr, u32 cg_enable)
-{
-	ulong reg_addr = ctrl_base_addr;
-
-	putbit(reg_addr, cg_enable, 1);
-}
-
-
 void mmu_vau_vaout_bypass_enable(ulong ctrl_base_addr, u32 iommu_id,
-		u32 iommu_type, bool vaor_bp_en)
+				 bool vaor_bp_en)
 {
 	ulong reg_addr = ctrl_base_addr + MMU_EN;
 	u32 reg_value;
@@ -88,31 +92,7 @@ void mmuvau_tlb_enable(ulong ctrl_base_addr, u32 r_enable, u32 w_enable)
 		reg_write_dword(reg_addr, 0);
 }
 
-/*just isp_iommu need,be similar to update*/
-void mmu_vau_tlb_update(ulong ctrl_base_addr, enum sprd_iommu_ch_type ch_type,
-		       u32 ch_id)
-{
-	ulong reg_addr = ctrl_base_addr;
-	u32  org_value = 0;
-	u32  new_value = 0;
-
-	if (ch_type == EX_CH_WRITE)
-		reg_addr = ctrl_base_addr + 0x18;
-	else if (ch_type == EX_CH_READ)
-		reg_addr = ctrl_base_addr + 0x1C;
-
-	org_value = reg_read_dword(reg_addr);
-
-	/*invalid channel*/
-	new_value = org_value & (~ch_id);
-	reg_write_dword(reg_addr, new_value);
-
-	/*enable channel*/
-	new_value = org_value | ch_id;
-	reg_write_dword(reg_addr, new_value);
-}
-
-void mmu_vau_update(ulong ctrl_base_addr, u32 iommu_id, u32 iommu_type)
+void mmu_vau_update(ulong ctrl_base_addr, u32 iommu_id)
 {
 	ulong reg_addr = ctrl_base_addr + UPDATE_OFFSET;
 
@@ -232,26 +212,6 @@ void mmu_vau_ppn2_range(ulong ctrl_base_addr, u32 iommu_id, ulong ppn2_range)
 	reg_write_dword(reg_addr, (ppn2_range >> 20));
 }
 
-void mmu_vau_reg_authority(ulong ctrl_base_addr, u32 iommu_id, ulong reg_ctrl)
-{
-	ulong reg_addr = ctrl_base_addr;
-
-	if (iommu_id == IOMMU_EX_ISP)
-		reg_addr += 0x3FC;
-	else
-		reg_addr += REG_AUTHORITY_OFFSET;
-
-	putbit(reg_addr, reg_ctrl, 0);
-}
-
-void mmu_vau_write_pate_totable(ulong pgt_base_addr,
-	u32 entry_index, u32 ppn_addr)
-{
-	ulong pgt_addr = pgt_base_addr + entry_index * 4;
-
-	reg_write_dword(pgt_addr, ppn_addr);
-}
-
 u32 mmu_vau_read_page_entry(ulong page_table_addr, u32 entry_index)
 {
 	ulong reg_addr = page_table_addr + entry_index * 4;
@@ -261,7 +221,7 @@ u32 mmu_vau_read_page_entry(ulong page_table_addr, u32 entry_index)
 	return phy_addr;
 }
 
-void mmu_vau_int_enable(ulong ctrl_base_addr, u32 iommu_id, u32 iommu_type)
+void mmu_vau_int_enable(ulong ctrl_base_addr, u32 iommu_id)
 {
 	ulong reg_addr = ctrl_base_addr + MMU_INT_EN;
 

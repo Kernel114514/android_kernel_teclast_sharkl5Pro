@@ -87,6 +87,9 @@ static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
 	lower_dentry_mnt = lower_path.mnt;
 	lower_parent_dentry = lock_parent(lower_dentry);
 
+	if (d_is_positive(lower_dentry))
+		return -EEXIST;
+
 	/* set last 16bytes of mode field to 0664 */
 	mode = (mode & S_IFMT) | 00664;
 
@@ -778,10 +781,12 @@ static int sdcardfs_getattr(const struct path *path, struct kstat *stat,
 	err = vfs_getattr(&lower_path, &lower_stat, request_mask, flags);
 	if (err)
 		goto out;
+	inode_lock(d_inode(dentry));
 	sdcardfs_copy_and_fix_attrs(d_inode(dentry),
 			      d_inode(lower_path.dentry));
 	fsstack_copy_inode_size(d_inode(dentry),
 			      d_inode(lower_path.dentry));
+	inode_unlock(d_inode(dentry));
 	err = sdcardfs_fillattr(mnt, d_inode(dentry), &lower_stat, stat);
 out:
 	sdcardfs_put_lower_path(dentry, &lower_path);

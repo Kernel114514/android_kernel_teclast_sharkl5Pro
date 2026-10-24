@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2019 Spreadtrum Communications Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #ifndef _SPRD_COM_H_
 #define _SPRD_COM_H_
 
@@ -23,7 +36,6 @@
 	((virt_addr-base_addr)/MMU_MAPING_PAGESIZE)
 #define MAP_SIZE_PAGE_ALIGN_UP(length) \
 	((length + MMU_MAPING_PAGE_MASK) & (~MMU_MAPING_PAGE_MASK))
-#define SIZE_TO_ENTRYS(size) (size/MMU_MAPING_PAGESIZE)
 #define SIZE_TO_ENTRIES(size) (size/MMU_MAPING_PAGESIZE)
 
 

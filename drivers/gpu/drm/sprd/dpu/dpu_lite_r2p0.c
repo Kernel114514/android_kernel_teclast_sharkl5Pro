@@ -17,6 +17,7 @@
 #include <linux/workqueue.h>
 #include "sprd_dpu.h"
 #include "sprd_dvfs_dpu.h"
+#include "sprd_corner.h"
 #include "dpu_enhance_param.h"
 
 #define DISPC_INT_FBC_PLD_ERR_MASK	BIT(8)
@@ -296,8 +297,8 @@ static int max_vsync_count;
 static int vsync_count;
 static struct sprd_dpu_layer wb_layer;
 static struct wb_region region[3];
-//static bool sprd_corner_support;
-//static int sprd_corner_radius;
+static bool sprd_corner_support;
+static int sprd_corner_radius;
 module_param(wb_xfbc_en, int, 0644);
 module_param(max_vsync_count, int, 0644);
 
@@ -311,6 +312,19 @@ static u32 dpu_get_version(struct dpu_context *ctx)
 	struct dpu_reg *reg = (struct dpu_reg *)ctx->base;
 
 	return reg->dpu_version;
+}
+
+static bool dpu_check_raw_int(struct dpu_context *ctx, u32 mask)
+{
+	struct dpu_reg *reg = (struct dpu_reg *)ctx->base;
+	u32 val;
+
+	val = reg->dpu_int_raw;
+	if (val & mask)
+		return true;
+
+	pr_err("dpu_int_raw:0x%x\n", val);
+	return false;
 }
 
 static int dpu_parse_dt(struct dpu_context *ctx,
@@ -343,7 +357,32 @@ static int dpu_parse_dt(struct dpu_context *ctx,
 	if (ret)
 		pr_warn("read awqos-high failed, use default\n");
 
+	ret = of_property_read_u32(np, "sprd,corner-radius",
+					&sprd_corner_radius);
+	if (!ret) {
+		sprd_corner_support = 1;
+		ctx->corner_size = sprd_corner_radius;
+		pr_info("round corner support, radius = %d.\n",
+			sprd_corner_radius);
+	}
+
 	return ret;
+}
+
+static void dpu_corner_init(struct dpu_context *ctx)
+{
+	static bool corner_is_inited;
+
+	if (!corner_is_inited && sprd_corner_support) {
+		sprd_corner_hwlayer_init(ctx->vm.vactive, ctx->vm.hactive,
+					sprd_corner_radius);
+
+		/* change id value based on different cpu chip */
+		corner_layer_top.index = 5;
+		corner_layer_bottom.index = 6;
+		corner_is_inited = 1;
+	}
+
 }
 
 static void dpu_dump(struct dpu_context *ctx)
@@ -844,6 +883,8 @@ static int dpu_init(struct dpu_context *ctx)
 
 	dpu_dvfs_task_init(ctx);
 
+	dpu_corner_init(ctx);
+
 	return 0;
 }
 
@@ -1134,6 +1175,12 @@ static void dpu_flip(struct dpu_context *ctx,
 	for (i = 0; i < count; i++)
 		dpu_layer(ctx, &layers[i]);
 
+	/* special case for round corner */
+	if (sprd_corner_support) {
+		dpu_layer(ctx, &corner_layer_top);
+		dpu_layer(ctx, &corner_layer_bottom);
+	}
+
 	/* update trigger and wait */
 	if (ctx->if_type == SPRD_DISPC_IF_DPI) {
 		if (!ctx->is_stopped) {
@@ -1182,6 +1229,9 @@ static void dpu_dpi_init(struct dpu_context *ctx)
 
 		/* disable Halt function for SPRD DSI */
 		reg->dpi_ctrl &= ~BIT(16);
+
+		/* select te from external pad */
+		reg->dpi_ctrl |= BIT(10);
 
 		/* set dpi timing */
 		reg->dpi_h_timing = (ctx->vm.hsync_len << 0) |
@@ -1726,6 +1776,7 @@ static struct dpu_core_ops dpu_lite_r2p0_ops = {
 	.enhance_get = dpu_enhance_get,
 	.modeset = dpu_modeset,
 	.write_back = dpu_write_back,
+	.check_raw_int = dpu_check_raw_int,
 };
 
 static struct ops_entry entry = {

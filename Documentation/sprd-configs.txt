@@ -103,15 +103,6 @@ CONFIG_ANDROID_PARANOID_NETWORK
 	[must] user
 	[missing plat description] none
 	[function] Only allow certain groups to create sockets
-CONFIG_ANON_INODES
-	[arch] all
-	[plat] all
-	[missing plat] none
-	[field] menu
-	[subsys] core
-	[must] console
-	[missing plat description] none
-	[function] Enable kernel support anonymous inodes.
 CONFIG_ARCH_CLOCKSOURCE_DATA
 	[arch] all
 	[plat] all
@@ -203,6 +194,15 @@ CONFIG_ARCH_HAS_KCOV
 	[must] debug
 	[missing plat description] none
 	[function] support KCOV.
+CONFIG_ARCH_HAS_RELR
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] menu
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] select by RELOCATABLE.
 CONFIG_ARCH_HAS_SET_MEMORY
 	[arch] all
 	[plat] all
@@ -491,6 +491,25 @@ CONFIG_ARCH_SUPPORTS_NUMA_BALANCING
 	[must] busybox_console
 	[missing plat description] none
 	[function] adds support for automatic NUMA aware memory/task placement
+CONFIG_ARCH_SUPPORTS_SHADOW_CALL_STACK
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] menu
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] An architecture should select this if it supports Clang's Shadow
+		Call Stack.
+CONFIG_ARCH_SUPPORTS_THINLTO
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] menu
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] An architecture should select this if it supports clang's ThinLTO.
 CONFIG_ARCH_SUPPORTS_UPROBES
 	[arch] all
 	[plat] all
@@ -710,6 +729,16 @@ CONFIG_ARM64_HW_AFDBM
 	[missing plat description] none
 	[function] The ARMv8.1 architecture extensions introduce support for
 		hardware updates of the access and dirty information in page.
+CONFIG_ARM64_LSE_ATOMICS
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] make,code
+	[subsys] arch
+	[must] user
+	[missing plat description] none
+	[function] ARMv8.1 introduces new atomic instructions that
+		are designed specifically to scale in very large systems.
 CONFIG_ARM64_MODULE_CMODEL_LARGE
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -756,6 +785,25 @@ CONFIG_ARM64_SSBD
 	[must] user
 	[missing plat description] none
 	[function] This enables mitigation of the bypassing of previous stores by speculative loads.
+CONFIG_ARM64_SW_TTBR0_PAN
+	[arch] arm64
+	[plat] sharkl3,sharkl5,sharkl5Pro
+	[missing plat] roc1
+	[field] code
+	[subsys] core
+	[must] user
+	[missing plat description] vts
+	[function] Enabling this option prevents the kernel from accessing user-space memory directly
+		by pointing TTBR0_EL1 to a reserved zeroed area and reserved ASID.
+CONFIG_ARM64_TAGGED_ADDR_ABI
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] code
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] Enable the tagged user addresses syscall ABI.
 CONFIG_ARM64_UAO
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -1103,12 +1151,12 @@ CONFIG_ASHMEM
 	[function] Enable the Anonymous Shared Memory Subsystem,vts require.
 CONFIG_ASN1
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] Build a simple ASN.1 grammar compiler that produces a bytecode
 	output that can be interpreted by the ASN.1 stream decoder and used
 	to inform it as to what tags are to be expected in a stream and
@@ -1124,21 +1172,21 @@ CONFIG_ASSOCIATIVE_ARRAY
 	[function] Generic associative array.
 CONFIG_ASYMMETRIC_KEY_TYPE
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] Following the previous configuration.
+	[missing plat description] none
 	[function] Asymmetric (public-key cryptographic) key type, following pixel2.
 CONFIG_ASYMMETRIC_PUBLIC_KEY_SUBTYPE
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] Following the previous configuration.
+	[missing plat description] none
 	[function] Asymmetric public-key crypto algorithm subtype
 CONFIG_AUDIT
 	[arch] all
@@ -1436,6 +1484,24 @@ CONFIG_BLK_DEV_SD
 	[must] user
 	[missing plat description] none
 	[function] This macro is to support host udisk function.
+CONFIG_BLK_INLINE_ENCRYPTION
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make,code
+	[subsys] block
+	[must] none
+	[missing plat description] none
+	[function] Enable this macro to support metadata encryption
+CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make,code
+	[subsys] block
+	[must] none
+	[missing plat description] none
+	[function] Enable this macro to support metadata encryption
 CONFIG_BLK_MQ_PCI
 	[arch] arm64
 	[plat] roc1
@@ -1544,6 +1610,26 @@ CONFIG_BPF_EVENTS
 	[must] user
 	[missing plat description] none
 	[function] This allows the user to attach BPF programs to kprobe events.
+CONFIG_BPF_JIT
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] make,code
+	[subsys] core
+	[must] user
+	[missing plat description] roc1 is not at androidr
+	[function] This option allows kernel to generate a native code when filter is loaded in memory.
+		This should speedup packet sniffing (libpcap/tcpdump).
+CONFIG_BPF_JIT_ALWAYS_ON
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] code
+	[subsys] core
+	[must] user
+	[missing plat description] androidr vts require. roc1 is not at androidr.
+	[function] Enables BPF JIT and removes BPF interpreter to avoid speculative execution
+		of BPF instructions by the interpreter
 CONFIG_BPF_SYSCALL
 	[arch] all
 	[plat] all
@@ -1681,6 +1767,15 @@ CONFIG_CC_HAS_KASAN_SW_TAGS
 	[must] user
 	[missing plat description] none
 	[function] For kasan function
+CONFIG_CC_HAS_SANCOV_TRACE_PC
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] make
+	[subsys] core
+	[must] user
+	[missing plat description] none
+	[function] enable for GCOV flags -fsanitize-coverage=trace-pc.
 CONFIG_CC_OPTIMIZE_FOR_SIZE
 	[arch] all
 	[plat] all
@@ -1865,6 +1960,15 @@ CONFIG_CHARGER_SC2720
 	[must] user
 	[missing plat description] Not used in the project, so no configuration
 	[function] This function is used to enable charge
+CONFIG_CHARGER_SC2721
+	[arch] arm
+	[plat] sharkle32
+	[missing plat] pike2,sharkl3_32,sharkl5_32
+	[field] make
+	[subsys] power
+	[must] user
+	[missing plat description] Not used in the project, so no configuration
+	[function] This function is used to enable charge
 CONFIG_CLEANCACHE
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -1905,12 +2009,12 @@ CONFIG_CLONE_BACKWARDS
 	not the 5th one.
 CONFIG_CLZ_TAB
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] selected by MPILIB.
 CONFIG_CMDLINE
 	[arch] all
@@ -2593,13 +2697,12 @@ CONFIG_CRYPTO_AES_ARM_CE
 	[function] Support AES using 32bit ARM Crypto Extension.
 CONFIG_CRYPTO_AKCIPHER
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] menu
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is been used
-	by ARMv8 Platform.
+	[missing plat description] none
 	[function] selected by other configs.
 CONFIG_CRYPTO_AKCIPHER2
 	[arch] all
@@ -2907,12 +3010,12 @@ CONFIG_CRYPTO_HASH2
 	[function] Selected by other configs.
 CONFIG_CRYPTO_HASH_INFO
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is only used by ARMv8 platform.
+	[missing plat description] none
 	[function] hash info symbol
 CONFIG_CRYPTO_HMAC
 	[arch] all
@@ -2996,13 +3099,13 @@ CONFIG_CRYPTO_MANAGER_DISABLE_TESTS
 	[missing plat description] none
 	[function] Disable run-time self tests.
 CONFIG_CRYPTO_MD4
-	[arch] all
-	[plat] all
-	[missing plat] none
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] none
+	[missing plat description] vts require
 	[function] MD4 digest algorithm
 CONFIG_CRYPTO_MD5
 	[arch] all
@@ -3089,9 +3192,9 @@ CONFIG_CRYPTO_RNG_DEFAULT
 	[missing plat description] none
 	[function] Selected by other configs.
 CONFIG_CRYPTO_RSA
-	[arch] arm
-	[plat] sharkle32
-	[missing plat] pike2,sharkl3_32,sharkl5_32
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] make
 	[subsys] crypto
 	[must] user
@@ -3535,24 +3638,6 @@ CONFIG_DEVFREQ_THERMAL
 	[must] user
 	[missing plat description] gpu don't support dvfs
 	[function] gpu thermal policy
-CONFIG_DEVTMPFS
-	[arch] all
-	[plat] pike2,roc1,sharkl3,sharkl3_32,sharkl5,sharkl5_32,sharkle32
-	[missing plat] sharkl5Pro
-	[field] make,code
-	[subsys] core
-	[must] console
-	[missing plat description] devtmpfs causes selinux rejections.
-	[function] Maintain a devtmpfs filesystem to mount at /dev.
-CONFIG_DEVTMPFS_MOUNT
-	[arch] all
-	[plat] pike2,roc1,sharkl3,sharkl3_32,sharkl5,sharkl5_32,sharkle32
-	[missing plat] sharkl5Pro
-	[field] code
-	[subsys] core
-	[must] console
-	[missing plat description] devtmpfs causes selinux rejections.
-	[function] Automount devtmpfs at /dev, after the kernel mounted the rootfs.
 CONFIG_DIRECT_SWAPPINESS
 	[arch] all
 	[plat] all
@@ -3631,12 +3716,12 @@ CONFIG_DM_ANDROID_VERITY_AT_MOST_ONCE_DEFAULT_ENABLED
 	   content will be detected, not online tampering.
 CONFIG_DM_BOW
 	[arch] all
-	[plat] sharkl3,sharkl3_32
-	[missing plat] pike2,roc1,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] md
 	[must] none
-	[missing plat description] disable considering the efficiency
+	[missing plat description] none
 	[function] dm_bow is a device mapper driver that uses the free space on a device
 	   to back up data that is overwritten.
 CONFIG_DM_BUFIO
@@ -3660,6 +3745,25 @@ CONFIG_DM_CRYPT
 	[missing plat description] none
 	[function] Depends on BLK_DEV_DM, This device-mapper target allows you to create a device that
 	   transparently encrypts the data on it.
+CONFIG_DM_DEFAULT_KEY
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make
+	[subsys] md
+	[must] none
+	[missing plat description] none
+	[function] Enable this macro to support metadata encryption
+CONFIG_DM_SNAPSHOT
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make
+	[subsys] md
+	[must] none
+	[missing plat description] none
+	[function] Depends on BLK_DEV_DM and select DM_BUFIO, enable for V-A/B.
+		Allow volume managers to take writable snapshots of a device.
 CONFIG_DM_UEVENT
 	[arch] all
 	[plat] all
@@ -3681,12 +3785,12 @@ CONFIG_DM_VERITY
 	   Verity target one function in The device mapper.
 CONFIG_DM_VERITY_AVB
 	[arch] all
-	[plat] roc1,sharkl5,sharkl5_32
-	[missing plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] md
 	[must] none
-	[missing plat description] disable this feature for DDR stability issue
+	[missing plat description] none
 	[function] Depends on DM_VERITY, Enables Android Verified Boot platform-specific error behavior.
 CONFIG_DM_VERITY_FEC
 	[arch] all
@@ -4584,6 +4688,24 @@ CONFIG_FS_ENCRYPTION
 	[must] none
 	[missing plat description] none
 	[function] Enable encryption of fs files and directories.
+CONFIG_FS_ENCRYPTION_ALGS
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] menu
+	[subsys] fs
+	[must] home
+	[missing plat description] none
+	[function] Menu item used to select a bundle of crypto configs for fs
+CONFIG_FS_ENCRYPTION_INLINE_CRYPT
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make,code
+	[subsys] fs
+	[must] none
+	[missing plat description] none
+	[function] Enable this macro to support metadata encryption
 CONFIG_FS_MBCACHE
 	[arch] all
 	[plat] all
@@ -4603,6 +4725,25 @@ CONFIG_FS_POSIX_ACL
 	[must] user
 	[missing plat description] none
 	[function] POSIX Access Control Lists (ACLs) support.
+CONFIG_FS_VERITY
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] make,code
+	[subsys] fs
+	[must] user
+	[missing plat description] vts require, roc1 not in androidr
+	[function] This option enables fs-verity.
+CONFIG_FS_VERITY_BUILTIN_SIGNATURES
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] make,code
+	[subsys] fs
+	[must] user
+	[missing plat description] vts require, roc1 not in androidr
+	[function] Support verifying signatures of verity files against the X.509 certificates
+		that have been loaded into the ".fs-verity" kernel keyring.
 CONFIG_FTRACE
 	[arch] all
 	[plat] all
@@ -4816,6 +4957,15 @@ CONFIG_GENERIC_CPU_AUTOPROBE
 	[must] console
 	[missing plat description] none
 	[function] Enable kernel support cpu auto probe.
+CONFIG_GENERIC_CPU_VULNERABILITIES
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] code
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] Enable kernel solve generic cpu vulnerabilities.
 CONFIG_GENERIC_CSUM
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -6542,6 +6692,16 @@ CONFIG_IKCONFIG_PROC
 	[must] user
 	[missing plat description] none
 	[function] vts require, Enable access to .config through /proc/config.gz
+CONFIG_IKHEADERS
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] make
+	[subsys] core
+	[must] user
+	[missing plat description] vts require.
+	[function] This option enables access to the in-kernel headers that are generated during
+		the build process.
 CONFIG_ILLEGAL_POINTER_VALUE
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -6828,6 +6988,18 @@ CONFIG_INPUT_GPIO
 	[must] unknown
 	[missing plat description] none
 	[function] GPIO driver support
+CONFIG_INPUT_JOYSTICK
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] make
+	[subsys] input
+	[must] unknown
+	[missing plat description] vts require
+	[function] If you have a joystick, 6dof controller, gamepad, steering wheel,
+		weapon control system or something like that you can say Y here
+		and the list of supported devices will be displayed. This option
+		doesn't affect the kernel.
 CONFIG_INPUT_KEYBOARD
 	[arch] all
 	[plat] all
@@ -7077,13 +7249,13 @@ CONFIG_IP6_NF_MATCH_RPFILTER
 	[function] This option allows you to match packets whose replies
 	  would go out via the interface the packet came in.
 CONFIG_IP6_NF_NAT
-	[arch] all
-	[plat] all
-	[missing plat] none
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
 	[field] menu,make
 	[subsys] net
 	[must] user
-	[missing plat description] none
+	[missing plat description] vts require
 	[function] This enables the `nat' table in ip6tables. This allows masquerading,
 		port forwarding and other forms of full Network Address Port Translation.
 CONFIG_IP6_NF_RAW
@@ -7117,25 +7289,25 @@ CONFIG_IP6_NF_TARGET_HL
 	  convenience (e.g. when running oldconfig). It selects
 	  CONFIG_NETFILTER_XT_TARGET_HL.
 CONFIG_IP6_NF_TARGET_MASQUERADE
-	[arch] all
-	[plat] all
-	[missing plat] none
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
 	[field] menu
 	[subsys] net
 	[must] user
-	[missing plat description] none
+	[missing plat description] dependend on IP6_NF_NAT, and IP6_NF_NAT needs be closed based on vts
 	[function] Masquerading is a special case of NAT: all outgoing
 	  connections are changed to seem to come from a
 	  particular interface's address, and if the interface
 	  goes down, those connections are lost.
 CONFIG_IP6_NF_TARGET_NPT
-	[arch] all
-	[plat] all
-	[missing plat] none
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
 	[field] menu
 	[subsys] net
 	[must] user
-	[missing plat description] none
+	[missing plat description] androidr vts require
 	[function] This option adds the `SNPT' and `DNPT' target, which
 	  perform stateless IPv6-to-IPv6 Network Prefix
 	  Translation per RFC 6296.
@@ -7740,6 +7912,15 @@ CONFIG_JBD2
 	[function] Generic journaling layer for block devices that support
 	   both 32-bit and 64-bit block numbers. It is currently
 	   used by the ext4 and OCFS2 filesystems.
+CONFIG_JOYSTICK_XPAD
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] code
+	[subsys] input
+	[must] unknown
+	[missing plat description] vts require
+	[function] X-Box gamepad support.
 CONFIG_JUMP_LABEL
 	[arch] all
 	[plat] all
@@ -8442,13 +8623,12 @@ CONFIG_MODVERSIONS
      boot the screen will print error info. eg.Bug 983051.
 CONFIG_MPILIB
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] core
 	[must] user
-	[missing plat description] missing pike2 because there have
-	no requirement.
+	[missing plat description] none
 	[function] needed by other configs
 CONFIG_MQ_IOSCHED_DEADLINE
 	[arch] all
@@ -8856,8 +9036,8 @@ CONFIG_NETFILTER_XT_MATCH_MULTIPORT
 	[function] "multiport" Multiple port match support
 CONFIG_NETFILTER_XT_MATCH_OWNER
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -8883,9 +9063,9 @@ CONFIG_NETFILTER_XT_MATCH_POLICY
 	[missing plat description] none
 	[function] vts require, IPsec "policy" match support
 CONFIG_NETFILTER_XT_MATCH_QTAGUID
-	[arch] all
-	[plat] roc1,sharkl5,sharkl5Pro,sharkl5_32
-	[missing plat] pike2,sharkl3,sharkl3_32,sharkle32
+	[arch] arm64
+	[plat] roc1,sharkl5Pro
+	[missing plat] sharkl3,sharkl5
 	[field] menu,make
 	[subsys] net
 	[must] user
@@ -9043,8 +9223,8 @@ CONFIG_NETFILTER_XT_TARGET_CONNSECMARK
 	  2. vts require
 CONFIG_NETFILTER_XT_TARGET_CT
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -9227,8 +9407,8 @@ CONFIG_NET_CLS_ACT
 	result, instantly drop or redirect packets, etc.
 CONFIG_NET_CLS_BPF
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -9264,8 +9444,8 @@ CONFIG_NET_CORE
 	[function] Network core driver support
 CONFIG_NET_EGRESS
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -9413,8 +9593,8 @@ CONFIG_NET_SCH_HTB
 	packet scheduling algorithm
 CONFIG_NET_SCH_INGRESS
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -10237,12 +10417,12 @@ CONFIG_OF_RESERVED_MEM
 	[function] Support Openfirmware reserved memory.
 CONFIG_OID_REGISTRY
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] menu
 	[subsys] security
 	[must] user
-	[missing plat description] armv8 use X509_CERTIFICATE_PARSER
+	[missing plat description] none
 	[function] select by X509_CERTIFICATE_PARSER.
 CONFIG_OLD_MCOUNT
 	[arch] arm
@@ -10718,6 +10898,15 @@ CONFIG_PHYS_ADDR_T_64BIT
 	[must] busybox_console
 	[missing plat description] none
 	[function] Define the number of digits of phys_addr_t.
+CONFIG_PID_IN_CONTEXTIDR
+	[arch] arm64
+	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
+	[missing plat] none
+	[field] code
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] Write the current PID to the CONTEXTIDR register.
 CONFIG_PINCONF
 	[arch] all
 	[plat] all
@@ -10816,12 +11005,12 @@ CONFIG_PINMUX
 	[function] Support pin multiplexing controllers.
 CONFIG_PKCS7_MESSAGE_PARSER
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] Support PKCS7_MESSAGE_PARSER.
 CONFIG_PM
 	[arch] all
@@ -11734,6 +11923,15 @@ CONFIG_RING_BUFFER_ALLOW_SWAP
 	[must] debug
 	[missing plat description] none
 	[function] Exchange two cpu ring buffer.
+CONFIG_ROP_PROTECTION_NONE
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] menu
+	[subsys] core
+	[must] console
+	[missing plat description] none
+	[function] set none for Return-oriented programming (ROP) protection.
 CONFIG_RPS
 	[arch] all
 	[plat] all
@@ -11852,13 +12050,13 @@ CONFIG_RTC_SYSTOHC_DEVICE
 	[missing plat description] none
 	[function] RTC used to synchronize NTP adjustment.
 CONFIG_RT_GROUP_SCHED
-	[arch] all
-	[plat] all
-	[missing plat] none
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
 	[field] code
 	[subsys] sched
 	[must] user
-	[missing plat description] none
+	[missing plat description] vts require
 	[function] Group scheduling for SCHED_RR/FIFO(vts require)
 CONFIG_RT_MUTEXES
 	[arch] all
@@ -11992,12 +12190,12 @@ CONFIG_SCHED_INFO
 	[function] Collect scheduler  info
 CONFIG_SCHED_MC
 	[arch] all
-	[plat] all
-	[missing plat] none
+	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] pike2
 	[field] code
 	[subsys] sched
 	[must] user
-	[missing plat description] none
+	[missing plat description] only a cluster
 	[function] Multi-core scheduler support
 CONFIG_SCHED_STACK_END_CHECK
 	[arch] arm
@@ -12195,15 +12393,6 @@ CONFIG_SECURITY_NETWORK
 	[must] user
 	[missing plat description] none
 	[function] vts require
-CONFIG_SECURITY_PERF_EVENTS_RESTRICT
-	[arch] all
-	[plat] all
-	[missing plat] none
-	[field] code
-	[subsys] security
-	[must] user
-	[missing plat description] none
-	[function] vts require, Restrict unprivileged use of performance events
 CONFIG_SECURITY_SELINUX
 	[arch] all
 	[plat] all
@@ -12240,6 +12429,15 @@ CONFIG_SECURITY_SELINUX_DEVELOP
 	[must] console
 	[missing plat description] none
 	[function] vts, cts, security
+CONFIG_SECURITY_SELINUX_SIDTAB_HASH_BITS
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] code
+	[subsys] core
+	[must] user
+	[missing plat description] none
+	[function] NSA SELinux sidtab hashtable size.
 CONFIG_SELECT_MEMORY_MODEL
 	[arch] arm64
 	[plat] roc1,sharkl3,sharkl5,sharkl5Pro
@@ -13267,6 +13465,24 @@ CONFIG_SPRD_EFUSE
 	[must] home
 	[missing plat description] none
 	[function] get sprdtrum soc series efuse value
+CONFIG_SPRD_EIRQSOFF
+	[arch] arm64
+	[plat] sharkl3,sharkl5Pro
+	[missing plat] roc1,sharkl5
+	[field] make,code
+	[subsys] soc
+	[must] debug
+	[missing plat description] possible impact on system performance
+	[function] irq disable monitor can detect any irqsoff delay too much
+CONFIG_SPRD_EMERGENCY_RESTART
+	[arch] all
+	[plat] all
+	[missing plat] none
+	[field] make
+	[subsys] reboot
+	[must] reboot
+	[missing plat description] none
+	[function] add sprd_emergency_restart function to transfer argument
 CONFIG_SPRD_EXT_MODEM
 	[arch] arm64
 	[plat] roc1
@@ -13382,12 +13598,12 @@ CONFIG_SPRD_IQ
 	[function] This function is used to enable wcdma iq log function.
 CONFIG_SPRD_IRQS_MONITOR
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32
-	[missing plat] pike2,sharkle32
+	[plat] all
+	[missing plat] none
 	[field] make,code
 	[subsys] soc
 	[must] debug
-	[missing plat description] possible impact on system power performance
+	[missing plat description] none
 	[function] irq monistor can detect any irq-storm.
 CONFIG_SPRD_JPG
 	[arch] all
@@ -13542,6 +13758,16 @@ CONFIG_SPRD_MODEM_LOADER
 	[must] user
 	[missing plat description] missing plat without external modem, Roc1 unique feature
 	[function] This function is used to load modem image
+CONFIG_SPRD_NATIVE_HANG_MONITOR
+	[arch] arm64
+	[plat] sharkl3
+	[missing plat] roc1,sharkl5,sharkl5Pro
+	[field] make,debug
+	[subsys] debug
+	[must] debug
+	[missing plat description] missing plat include roc1,sharkl5,sharkl5Pro
+					are notsupported for this.
+	[function] This function is used to save debug information when native hang
 CONFIG_SPRD_PAMU3
 	[arch] arm64
 	[plat] roc1
@@ -13592,6 +13818,15 @@ CONFIG_SPRD_PCIE_EP_DEVICE
 				   missing sharkl5Pro because sharkl3 hardware
 				   platform does not use pci device.
 	[function] Support pci device with roc1.
+CONFIG_SPRD_PIKE2_POWER_DEBUG
+	[arch] arm
+	[plat] pike2
+	[missing plat] sharkl3_32,sharkl5_32,sharkle32
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only pike2 used this special driver.
+	[function] Enable/disable sprd pike2 power debug function.
 CONFIG_SPRD_PIKE2_SLEEP
 	[arch] arm
 	[plat] pike2
@@ -13661,6 +13896,15 @@ CONFIG_SPRD_ROC1_CLK
 	[missing plat description] CONFIG_SPRD_ROC1_CLK is only for roc1 platform and other projects
 	have their own driver.
 	[function] This function is used to enable roc1 platform clock driver.
+CONFIG_SPRD_ROC1_POWER_DEBUG
+	[arch] arm64
+	[plat] roc1
+	[missing plat] sharkl3,sharkl5,sharkl5Pro
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only roc1 used this special driver.
+	[function] Enable/disable sprd roc1 power debug function.
 CONFIG_SPRD_ROC1_USB2_PHY
 	[arch] arm64
 	[plat] roc1
@@ -13730,6 +13974,15 @@ CONFIG_SPRD_SFP_TEST
 	[must] user
 	[missing plat description] There is no requirement in sharkl3,sharkl5 and sharkl5Pro.
 	[function] This module is a test module for SFP module.
+CONFIG_SPRD_SHARKL3_POWER_DEBUG
+	[arch] all
+	[plat] sharkl3,sharkl3_32
+	[missing plat] pike2,roc1,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only sharkl3 used this special driver.
+	[function] Enable/disable sprd sharkl3 power debug function.
 CONFIG_SPRD_SHARKL3_USB2_PHY
 	[arch] all
 	[plat] sharkl3,sharkl3_32
@@ -13749,6 +14002,15 @@ CONFIG_SPRD_SHARKL5PRO_CLK
 	[missing plat description] CONFIG_SPRD_SHARKL5PRO_CLK is only for sharkl5pro platform and
 	other projects have their own driver.
 	[function] This function is used to enable sharkl5pro platform clock driver.
+CONFIG_SPRD_SHARKL5PRO_POWER_DEBUG
+	[arch] arm64
+	[plat] sharkl5Pro
+	[missing plat] roc1,sharkl3,sharkl5
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only sharkl5pro used this special driver.
+	[function] Enable/disable sprd sharkl5pro power debug function.
 CONFIG_SPRD_SHARKL5_CLK
 	[arch] all
 	[plat] sharkl5,sharkl5_32
@@ -13759,6 +14021,15 @@ CONFIG_SPRD_SHARKL5_CLK
 	[missing plat description] CONFIG_SPRD_SHARKL5_CLK is only for sharkl5 platform and other
 	projects have their own driver.
 	[function] This function is used to enable sharkl5 platform clock driver.
+CONFIG_SPRD_SHARKL5_POWER_DEBUG
+	[arch] all
+	[plat] sharkl5,sharkl5_32
+	[missing plat] pike2,roc1,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only sharkl5 used this special driver.
+	[function] Enable/disable sprd sharkl5 power debug function.
 CONFIG_SPRD_SHARKL5_USB2_PHY
 	[arch] all
 	[plat] sharkl5,sharkl5Pro,sharkl5_32
@@ -13772,6 +14043,15 @@ CONFIG_SPRD_SHARKL5_USB2_PHY
 				   missing sharkl3_32 because has different phy
 				   missing sharkle32 because has different phy
 	[function] usb phy init
+CONFIG_SPRD_SHARKLE_POWER_DEBUG
+	[arch] arm
+	[plat] sharkle32
+	[missing plat] pike2,sharkl3_32,sharkl5_32
+	[field] make
+	[subsys] soc
+	[must] debug
+	[missing plat description] Only sharkle used this special driver.
+	[function] Enable/disable sprd sharkle power debug function.
 CONFIG_SPRD_SHARKLE_USB2_PHY
 	[arch] arm
 	[plat] sharkle32
@@ -14231,23 +14511,34 @@ CONFIG_SYSFS_SYSCALL
 	[must] console
 	[missing plat description] none
 	[function] Support sysfs system call.
+CONFIG_SYSTEM_DATA_VERIFICATION
+	[arch] all
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
+	[field] code
+	[subsys] core
+	[must] user
+	[missing plat description] vts require
+	[function] Provide PKCS#7 message verification using the contents of the system
+		trusted keyring to provide public keys. This then can be used for module verification,
+		kexec image verification and firmware blob verification.
 CONFIG_SYSTEM_TRUSTED_KEYRING
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] support SYSTEM_TRUSTED_KEYRING.
 CONFIG_SYSTEM_TRUSTED_KEYS
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] Support SYSTEM_TRUSTED_KEYS.
 CONFIG_SYS_SUPPORTS_APM_EMULATION
 	[arch] arm
@@ -15938,12 +16229,12 @@ CONFIG_WQ_POWER_EFFICIENT_DEFAULT
 	[function] power efficient work queue
 CONFIG_X509_CERTIFICATE_PARSER
 	[arch] all
-	[plat] roc1,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
-	[missing plat] pike2
+	[plat] all
+	[missing plat] none
 	[field] make
 	[subsys] crypto
 	[must] user
-	[missing plat description] This configuration is used by ARMv8 platform.
+	[missing plat description] none
 	[function] X.509 certificate parser
 CONFIG_XFRM
 	[arch] all
@@ -15978,8 +16269,8 @@ CONFIG_XFRM_FRAGMENT
 		   sprd until now. It is used for vowifi.
 CONFIG_XFRM_INTERFACE
 	[arch] all
-	[plat] pike2,sharkl3,sharkl3_32,sharkl5Pro,sharkle32
-	[missing plat] roc1,sharkl5,sharkl5_32
+	[plat] pike2,sharkl3,sharkl3_32,sharkl5,sharkl5Pro,sharkl5_32,sharkle32
+	[missing plat] roc1
 	[field] menu,net
 	[subsys] net
 	[must] user
@@ -16093,7 +16384,15 @@ CONFIG_ZRAM
 	[missing plat description] none
 	[function] SWAP partition based on RAM is used to access the compressed anon page
 		   to avoid the influence of IO speed restriction on the system,
-		   which is equivalent to increasing the size of available memory.
+CONFIG_ZRAM_WRITEBACK
+	[arch] arm
+	[plat] sharkl3_32
+	[missing plat] pike2,sharkl5_32,sharkle32
+	[field] make
+	[subsys] block
+	[must] user
+	[missing plat description] will open when proper
+	[function] enable backing swap to block device
 CONFIG_ZSMALLOC
 	[arch] all
 	[plat] all

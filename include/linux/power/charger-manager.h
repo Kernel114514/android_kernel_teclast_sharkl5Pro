@@ -46,10 +46,11 @@ enum cm_event_types {
 };
 
 enum cm_charge_status {
-	CM_CHARGE_TEMP_ABNORMAL = BIT(0),
-	CM_CHARGE_VOLTAGE_ABNORMAL = BIT(1),
-	CM_CHARGE_HEALTH_ABNORMAL = BIT(2),
-	CM_CHARGE_DURATION_ABNORMAL = BIT(3),
+	CM_CHARGE_TEMP_OVERHEAT = BIT(0),
+	CM_CHARGE_TEMP_COLD = BIT(1),
+	CM_CHARGE_VOLTAGE_ABNORMAL = BIT(2),
+	CM_CHARGE_HEALTH_ABNORMAL = BIT(3),
+	CM_CHARGE_DURATION_ABNORMAL = BIT(4),
 };
 
 /**
@@ -144,6 +145,25 @@ struct charger_jeita_table {
 	int term_volt;
 };
 
+enum cm_track_state {
+	CAP_TRACK_INIT,
+	CAP_TRACK_IDLE,
+	CAP_TRACK_UPDATING,
+	CAP_TRACK_DONE,
+	CAP_TRACK_ERR,
+};
+
+struct cm_track_capacity {
+	enum cm_track_state state;
+	int start_clbcnt;
+	int start_cap;
+	int end_vol;
+	int end_cur;
+	s64 start_time;
+	bool cap_tracking;
+	struct delayed_work track_capacity_work;
+};
+
 /**
  * struct charger_desc
  * @psy_name: the name of power-supply-class for charger manager
@@ -187,6 +207,8 @@ struct charger_jeita_table {
  *	max_duration_ms', cm start charging.
  * @charger_status: Recording state of charge
  * @trigger_cnt: The number of times the battery is fully charged
+ * @low_temp_trigger_cnt: The number of times the battery temperature
+ *	is less than 10 degree.
  * @cap_one_time: The percentage of electricity is not
  *	allowed to change by 1% in cm->desc->cap_one_time
  * @trickle_time_out: If 99% lasts longer than it , will force set full statu
@@ -204,6 +226,10 @@ struct charger_jeita_table {
  *	adjust the charging current according to the battery temperature.
  * @jeita_tab_size: Specify the size of jeita temperature table.
  * @jeita_disabled: disable jeita function when needs
+ * @temperature: the battery temperature
+ * @internal_resist: the battery internal resistance in mOhm
+ * @cap_table_len: the length of ocv-capacity table
+ * @cap_table: capacity table with corresponding ocv
  */
 struct charger_desc {
 	const char *psy_name;
@@ -244,6 +270,7 @@ struct charger_desc {
 
 	int charger_status;
 	int trigger_cnt;
+	int low_temp_trigger_cnt;
 
 	u32 cap_one_time;
 
@@ -264,6 +291,12 @@ struct charger_desc {
 	struct charger_jeita_table *jeita_tab;
 	u32 jeita_tab_size;
 	bool jeita_disabled;
+
+	int temperature;
+
+	int internal_resist;
+	int cap_table_len;
+	struct power_supply_battery_ocv_table *cap_table;
 };
 
 #define PSY_NAME_MAX	30
@@ -314,6 +347,7 @@ struct charger_manager {
 	u64 charging_start_time;
 	u64 charging_end_time;
 	u32 charging_status;
+	struct cm_track_capacity track;
 };
 
 #ifdef CONFIG_CHARGER_MANAGER

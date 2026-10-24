@@ -23,6 +23,7 @@ static struct wifi_calibration wifi_data;
 
 static char gnss_firmware_parent_path[FIRMWARE_FILEPATHNAME_LENGTH_MAX];
 static char firmware_file_name[FIRMWARE_FILEPATHNAME_LENGTH_MAX];
+static char firmware_file_path[FIRMWARE_FILEPATHNAME_LENGTH_MAX];
 
 struct sprdwcn_gnss_ops *gnss_ops;
 
@@ -46,6 +47,13 @@ void wcn_device_poweroff(void)
 	mutex_unlock(&marlin_lock);
 	WCN_INFO("all subsys power off finish!\n");
 }
+
+void wcn_chip_power_off(void)
+{
+	sprdwcn_bus_set_carddump_status(false);
+	wcn_device_poweroff();
+}
+EXPORT_SYMBOL_GPL(wcn_chip_power_off);
 
 static int wcn_get_firmware_path(char *firmwarename, char *firmware_path)
 {
@@ -341,32 +349,47 @@ static int wcn_download_image(struct wcn_device *wcn_dev)
 	return 0;
 }
 
+static void fstab_ab(struct wcn_device *wcn_dev)
+{
+	if (wcn_dev->fstab == 'a')
+		strcat(firmware_file_path, "_a");
+	else if (wcn_dev->fstab == 'b')
+		strcat(firmware_file_path, "_b");
+}
+
 static int wcn_download_image_new(struct wcn_device *wcn_dev)
 {
-	char *file;
 	int ret = 0;
 
+	memset(firmware_file_path, 0, FIRMWARE_FILEPATHNAME_LENGTH_MAX);
 	/* file_path used in dts */
 	if (wcn_dev->file_path) {
-		file = wcn_dev->file_path;
+		strcpy(firmware_file_path, wcn_dev->file_path);
+		fstab_ab(wcn_dev);
 		if (wcn_dev_is_gnss(wcn_dev)) {
-			if (s_wcn_device.gnss_type == WCN_GNSS_TYPE_BD)
-				file = wcn_dev->file_path_ext;
-			gnss_file_path_set(file);
+			if (s_wcn_device.gnss_type == WCN_GNSS_TYPE_BD) {
+				strcpy(firmware_file_path,
+				       wcn_dev->file_path_ext);
+				fstab_ab(wcn_dev);
+				gnss_file_path_set(firmware_file_path);
+			}
 		}
-		WCN_INFO("load config file:%s\n", file);
-		ret = wcn_load_firmware_img(wcn_dev, file,
+
+		WCN_INFO("load config file:%s\n", firmware_file_path);
+		ret = wcn_load_firmware_img(wcn_dev, firmware_file_path,
 					    wcn_dev->file_length);
 
 		/* For gnss fix file path isn't fit with actual file type */
 		if (wcn_dev_is_gnss(wcn_dev) && ret == 1) {
 			if (s_wcn_device.gnss_type == WCN_GNSS_TYPE_BD)
-				file = wcn_dev->file_path;
+				strcpy(firmware_file_path, wcn_dev->file_path);
 			else
-				file = wcn_dev->file_path_ext;
-			gnss_file_path_set(file);
-			WCN_INFO("load config file:%s\n", file);
-			wcn_load_firmware_img(wcn_dev, file,
+				strcpy(firmware_file_path,
+				       wcn_dev->file_path_ext);
+			fstab_ab(wcn_dev);
+			gnss_file_path_set(firmware_file_path);
+			WCN_INFO("load config file:%s\n", firmware_file_path);
+			wcn_load_firmware_img(wcn_dev, firmware_file_path,
 					      wcn_dev->file_length);
 		}
 		return 0;
@@ -824,9 +847,9 @@ int start_integrate_wcn_truely(u32 subsys)
 	wcn_dev->wcn_open_status |= subsys_bit;
 
 	if (is_marlin) {
-		wcn_set_module_state(true);
 		mdbg_atcmd_clean();
-		wcn_ap_notify_btwf_time();
+		wcn_set_module_state(true);
+		wcn_firmware_init();
 	}
 	mutex_unlock(&wcn_dev->power_lock);
 

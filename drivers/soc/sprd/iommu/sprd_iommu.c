@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Spreadtrum Communications Inc.
+ * Copyright (C) 2019 Spreadtrum Communications Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,7 +14,6 @@
 #include <linux/module.h>
 #include <linux/file.h>
 #include <linux/fs.h>
-#include <linux/clk.h>
 #include <linux/miscdevice.h>
 #include <linux/export.h>
 #include <linux/slab.h>
@@ -32,8 +31,6 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/dma-buf.h>
-#include <linux/pm_runtime.h>
-#include <linux/pm.h>
 
 #include "sprd_iommu_sysfs.h"
 #include "drv/com/sprd_com.h"
@@ -43,214 +40,129 @@ static int sprd_iommu_remove(struct platform_device *pdev);
 
 static struct sprd_iommu_list_data sprd_iommu_list[SPRD_IOMMU_MAX] = {
 	{ .iommu_id = SPRD_IOMMU_VSP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_DCAM,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_DCAM1,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_CPP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_GSP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_JPG,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_DISP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_ISP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_ISP1,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_FD,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
-	{ .iommu_id = SPRD_IOMMU_AI,
-	   .enabled = false,
+	{ .iommu_id = SPRD_IOMMU_NPU,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_EPP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_EDP,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_IDMA,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 
 	{ .iommu_id = SPRD_IOMMU_VDMA,
-	   .enabled = false,
 	   .iommu_dev = NULL},
 };
 
 static const struct of_device_id sprd_iommu_ids[] = {
-	{ .compatible = "sprd,iommuexle-gsp",
-	   .data = (void *)(IOMMU_EXLE_GSP)},
+	{ .compatible = "sprd,iommuex-gsp",
+	   .data = (void *)(IOMMU_EX_GSP)},
 
-	{ .compatible = "sprd,iommuexle-dispc",
-	   .data = (void *)(IOMMU_EXLE_DISP)},
+	{ .compatible = "sprd,iommuex-dispc",
+	   .data = (void *)(IOMMU_EX_DISP)},
 
-	{ .compatible = "sprd,iommuexle-vsp",
-	   .data = (void *)(IOMMU_EXLE_VSP)},
+	{ .compatible = "sprd,iommuex-vsp",
+	   .data = (void *)(IOMMU_EX_VSP)},
 
-	{ .compatible = "sprd,iommuexle-dcam",
-	   .data = (void *)(IOMMU_EXLE_DCAM)},
+	{ .compatible = "sprd,iommuex-dcam",
+	   .data = (void *)(IOMMU_EX_DCAM)},
 
-	{ .compatible = "sprd,iommuexle-isp",
-	   .data = (void *)(IOMMU_EXLE_ISP)},
+	{ .compatible = "sprd,iommuex-isp",
+	   .data = (void *)(IOMMU_EX_ISP)},
 
-	{ .compatible = "sprd,iommuexle-cpp",
-	   .data = (void *)(IOMMU_EXLE_CPP)},
+	{ .compatible = "sprd,iommuex-newisp",
+	   .data = (void *)(IOMMU_EX_NEWISP)},
 
-	{ .compatible = "sprd,iommuexle-jpg",
-	   .data = (void *)(IOMMU_EXLE_JPG)},
+	{ .compatible = "sprd,iommuex-cpp",
+	   .data = (void *)(IOMMU_EX_CPP)},
 
-	{ .compatible = "sprd,iommuexpk2-gsp",
-	   .data = (void *)(IOMMU_EXPK2_GSP)},
+	{ .compatible = "sprd,iommuex-jpg",
+	   .data = (void *)(IOMMU_EX_JPG)},
 
-	{ .compatible = "sprd,iommuexpk2-dispc",
-	   .data = (void *)(IOMMU_EXPK2_DISP)},
+	{ .compatible = "sprd,iommuex-fd",
+	   .data = (void *)(IOMMU_EX_FD)},
 
-	{ .compatible = "sprd,iommuexpk2-vsp",
-	   .data = (void *)(IOMMU_EXPK2_VSP)},
+	{ .compatible = "sprd,iommuex-ai",
+	   .data = (void *)(IOMMU_EX_NPU)},
 
-	{ .compatible = "sprd,iommuexpk2-dcam",
-	   .data = (void *)(IOMMU_EXPK2_DCAM)},
+	{ .compatible = "sprd,iommuex-epp",
+	   .data = (void *)(IOMMU_EX_EPP)},
 
-	{ .compatible = "sprd,iommuexpk2-isp",
-	   .data = (void *)(IOMMU_EXPK2_ISP)},
+	{ .compatible = "sprd,iommuex-edp",
+	   .data = (void *)(IOMMU_EX_EDP)},
 
-	{ .compatible = "sprd,iommuexpk2-cpp",
-	   .data = (void *)(IOMMU_EXPK2_CPP)},
+	{ .compatible = "sprd,iommuex-idma",
+	   .data = (void *)(IOMMU_EX_IDMA)},
 
-	{ .compatible = "sprd,iommuexpk2-jpg",
-	   .data = (void *)(IOMMU_EXPK2_JPG)},
+	{ .compatible = "sprd,iommuex-vdma",
+	   .data = (void *)(IOMMU_EX_VDMA)},
 
-	{ .compatible = "sprd,iommuexl3-dispc",
-	   .data = (void *)(IOMMU_EXL3_DISP)},
+	{ .compatible = "sprd,iommuvau-dispc",
+	   .data = (void *)(IOMMU_VAU_DISP)},
 
-	{ .compatible = "sprd,iommuexl3-vsp",
-	   .data = (void *)(IOMMU_EXL3_VSP)},
+	{ .compatible = "sprd,iommuvau-vsp",
+	   .data = (void *)(IOMMU_VAU_VSP)},
 
-	{ .compatible = "sprd,iommuexl3-dcam",
-	   .data = (void *)(IOMMU_EXL3_DCAM)},
+	{ .compatible = "sprd,iommuvau-dcam",
+	   .data = (void *)(IOMMU_VAU_DCAM)},
 
-	{ .compatible = "sprd,iommuexl3-isp",
-	   .data = (void *)(IOMMU_EXL3_ISP)},
+	{ .compatible = "sprd,iommuvau-isp",
+	   .data = (void *)(IOMMU_VAU_ISP)},
 
-	{ .compatible = "sprd,iommuexl3-cpp",
-	   .data = (void *)(IOMMU_EXL3_CPP)},
+	{ .compatible = "sprd,iommuvau-cpp",
+	   .data = (void *)(IOMMU_VAU_CPP)},
 
-	{ .compatible = "sprd,iommuexl3-jpg",
-	   .data = (void *)(IOMMU_EXL3_JPG)},
-	{ .compatible = "sprd,iommuexl5-dispc",
-	   .data = (void *)(IOMMU_EXL5_DISP)},
+	{ .compatible = "sprd,iommuvau-jpg",
+	   .data = (void *)(IOMMU_VAU_JPG)},
 
-	{ .compatible = "sprd,iommuexl5-vsp",
-	   .data = (void *)(IOMMU_EXL5_VSP)},
+	{ .compatible = "sprd,iommuvau-fd",
+	  .data = (void *)(IOMMU_VAU_FD)},
 
-	{ .compatible = "sprd,iommuexl5-dcam",
-	   .data = (void *)(IOMMU_EXL5_DCAM)},
+	{ .compatible = "sprd,iommuvau-ai",
+	  .data = (void *)(IOMMU_VAU_NPU)},
 
-	{ .compatible = "sprd,iommuexl5-isp",
-	   .data = (void *)(IOMMU_EXL5_ISP)},
+	{ .compatible = "sprd,iommuvau-epp",
+	  .data = (void *)(IOMMU_VAU_EPP)},
 
-	{ .compatible = "sprd,iommuexl5-cpp",
-	   .data = (void *)(IOMMU_EXL5_CPP)},
+	{ .compatible = "sprd,iommuvau-edp",
+	  .data = (void *)(IOMMU_VAU_EDP)},
 
-	{ .compatible = "sprd,iommuexl5-jpg",
-	   .data = (void *)(IOMMU_EXL5_JPG)},
+	{ .compatible = "sprd,iommuvau-idma",
+	  .data = (void *)(IOMMU_VAU_IDMA)},
 
-	{ .compatible = "sprd,iommuexl5-fd",
-	  .data = (void *)(IOMMU_EXL5_FD)},
-
-	{ .compatible = "sprd,iommuexroc1-dispc",
-	   .data = (void *)(IOMMU_EXROC1_DISP)},
-
-	{ .compatible = "sprd,iommuexroc1-vsp",
-	   .data = (void *)(IOMMU_EXROC1_VSP)},
-
-	{ .compatible = "sprd,iommuexroc1-dcam",
-	   .data = (void *)(IOMMU_EXROC1_DCAM)},
-
-	{ .compatible = "sprd,iommuexroc1-isp",
-	   .data = (void *)(IOMMU_EXROC1_ISP)},
-
-	{ .compatible = "sprd,iommuexroc1-cpp",
-	   .data = (void *)(IOMMU_EXROC1_CPP)},
-
-	{ .compatible = "sprd,iommuexroc1-jpg",
-	   .data = (void *)(IOMMU_EXROC1_JPG)},
-
-	{ .compatible = "sprd,iommuexroc1-fd",
-	  .data = (void *)(IOMMU_EXROC1_FD)},
-
-	{ .compatible = "sprd,iommuexroc1-ai",
-	  .data = (void *)(IOMMU_EXROC1_AI)},
-
-	{ .compatible = "sprd,iommuexroc1-epp",
-	  .data = (void *)(IOMMU_EXROC1_EPP)},
-
-	{ .compatible = "sprd,iommuexroc1-edp",
-
-	  .data = (void *)(IOMMU_EXROC1_EDP)},
-
-	{ .compatible = "sprd,iommuvaul5p-dispc",
-	   .data = (void *)(IOMMU_VAUL5P_DISP)},
-
-	{ .compatible = "sprd,iommuvaul5p-vsp",
-	   .data = (void *)(IOMMU_VAUL5P_VSP)},
-
-	{ .compatible = "sprd,iommuvaul5p-dcam",
-	   .data = (void *)(IOMMU_VAUL5P_DCAM)},
-
-	{ .compatible = "sprd,iommuvaul5p-isp",
-	   .data = (void *)(IOMMU_VAUL5P_ISP)},
-
-	{ .compatible = "sprd,iommuvaul5p-cpp",
-	   .data = (void *)(IOMMU_VAUL5P_CPP)},
-
-	{ .compatible = "sprd,iommuvaul5p-jpg",
-	   .data = (void *)(IOMMU_VAUL5P_JPG)},
-
-	{ .compatible = "sprd,iommuvaul5p-fd",
-	  .data = (void *)(IOMMU_VAUL5P_FD)},
-
-	{ .compatible = "sprd,iommuvaul5p-ai",
-	  .data = (void *)(IOMMU_VAUL5P_AI)},
-
-	{ .compatible = "sprd,iommuvaul5p-epp",
-	  .data = (void *)(IOMMU_VAUL5P_EPP)},
-
-	{ .compatible = "sprd,iommuvaul5p-edp",
-	  .data = (void *)(IOMMU_VAUL5P_EDP)},
-
-	{ .compatible = "sprd,iommuvaul5p-idma",
-	  .data = (void *)(IOMMU_VAUL5P_IDMA)},
-
-	{ .compatible = "sprd,iommuvaul5p-vdma",
-	  .data = (void *)(IOMMU_VAUL5P_VDMA)},
-	{},
+	{ .compatible = "sprd,iommuvau-vdma",
+	  .data = (void *)(IOMMU_VAU_VDMA)},
 };
 
 static struct platform_driver iommu_driver = {
@@ -264,78 +176,77 @@ static struct platform_driver iommu_driver = {
 
 static void sprd_iommu_set_list(struct sprd_iommu_dev *iommu_dev)
 {
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		pr_err("%s, iommu_dev == NULL!\n", __func__);
 		return;
 	}
 
 	switch (iommu_dev->init_data->id) {
 	case IOMMU_EX_VSP:
-		sprd_iommu_list[SPRD_IOMMU_VSP].enabled = true;
+	case IOMMU_VAU_VSP:
 		sprd_iommu_list[SPRD_IOMMU_VSP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_VSP;
 		break;
 	case IOMMU_EX_DCAM:
-		sprd_iommu_list[SPRD_IOMMU_DCAM].enabled = true;
+	case IOMMU_VAU_DCAM:
 		sprd_iommu_list[SPRD_IOMMU_DCAM].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_DCAM;
 		break;
 	case IOMMU_EX_CPP:
-		sprd_iommu_list[SPRD_IOMMU_CPP].enabled = true;
+	case IOMMU_VAU_CPP:
 		sprd_iommu_list[SPRD_IOMMU_CPP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_CPP;
 		break;
 	case IOMMU_EX_GSP:
-		sprd_iommu_list[SPRD_IOMMU_GSP].enabled = true;
 		sprd_iommu_list[SPRD_IOMMU_GSP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_GSP;
 		break;
 	case IOMMU_EX_JPG:
-		sprd_iommu_list[SPRD_IOMMU_JPG].enabled = true;
+	case IOMMU_VAU_JPG:
 		sprd_iommu_list[SPRD_IOMMU_JPG].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_JPG;
 		break;
 	case IOMMU_EX_DISP:
-		sprd_iommu_list[SPRD_IOMMU_DISP].enabled = true;
+	case IOMMU_VAU_DISP:
 		sprd_iommu_list[SPRD_IOMMU_DISP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_DISP;
 		break;
 	case IOMMU_EX_ISP:
 	case IOMMU_EX_NEWISP:
-		sprd_iommu_list[SPRD_IOMMU_ISP].enabled = true;
+	case IOMMU_VAU_ISP:
 		sprd_iommu_list[SPRD_IOMMU_ISP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_ISP;
 		break;
 	case IOMMU_EX_EPP:
-		sprd_iommu_list[SPRD_IOMMU_EPP].enabled = true;
+	case IOMMU_VAU_EPP:
 		sprd_iommu_list[SPRD_IOMMU_EPP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_EPP;
 		break;
 	case IOMMU_EX_EDP:
-		sprd_iommu_list[SPRD_IOMMU_EDP].enabled = true;
+	case IOMMU_VAU_EDP:
 		sprd_iommu_list[SPRD_IOMMU_EDP].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_EDP;
 		break;
 	case IOMMU_EX_FD:
-		sprd_iommu_list[SPRD_IOMMU_FD].enabled = true;
+	case IOMMU_VAU_FD:
 		sprd_iommu_list[SPRD_IOMMU_FD].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_FD;
 		break;
 	case IOMMU_EX_IDMA:
-		sprd_iommu_list[SPRD_IOMMU_IDMA].enabled = true;
+	case IOMMU_VAU_IDMA:
 		sprd_iommu_list[SPRD_IOMMU_IDMA].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_IDMA;
 		break;
 	case IOMMU_EX_VDMA:
-		sprd_iommu_list[SPRD_IOMMU_VDMA].enabled = true;
+	case IOMMU_VAU_VDMA:
 		sprd_iommu_list[SPRD_IOMMU_VDMA].iommu_dev = iommu_dev;
 		iommu_dev->id = SPRD_IOMMU_VDMA;
 		break;
 
-	case IOMMU_EX_AI:
-		sprd_iommu_list[SPRD_IOMMU_AI].enabled = true;
-		sprd_iommu_list[SPRD_IOMMU_AI].iommu_dev = iommu_dev;
-		iommu_dev->id = SPRD_IOMMU_AI;
+	case IOMMU_EX_NPU:
+	case IOMMU_VAU_NPU:
+		sprd_iommu_list[SPRD_IOMMU_NPU].iommu_dev = iommu_dev;
+		iommu_dev->id = SPRD_IOMMU_NPU;
 		break;
 	default:
 		pr_err("%s, no iommu id: %d\n", __func__,
@@ -343,19 +254,6 @@ static void sprd_iommu_set_list(struct sprd_iommu_dev *iommu_dev)
 		iommu_dev->id = -1;
 		break;
 	}
-}
-
-static bool sprd_iommu_is_dev_valid_master(struct device *dev)
-{
-	struct device_node *np = dev->of_node;
-	int ret;
-
-	/*
-	 * An iommu master has an iommus property containing a list of phandles
-	 * to iommu nodes, each with an #iommu-cells property with value 0.
-	 */
-	ret = of_count_phandle_with_args(np, "iommus", "#iommu-cells");
-	return (ret > 0);
 }
 
 static struct sprd_iommu_dev *sprd_iommu_get_subnode(struct device *dev)
@@ -557,16 +455,24 @@ static bool sprd_iommu_clear_sg_iova(struct sprd_iommu_dev *iommu_dev,
 	return ret;
 }
 
-static void sprd_iommu_pool_show(struct sprd_iommu_dev *iommu_dev)
+void sprd_iommu_pool_show(struct device *dev)
 {
 	int index;
 	struct sprd_iommu_sg_rec *rec;
+	struct sprd_iommu_dev *iommu_dev = NULL;
 
-	if (iommu_dev->id == SPRD_IOMMU_VSP ||
-	    iommu_dev->id == SPRD_IOMMU_DISP)
+	if (!dev) {
+		IOMMU_ERR("null parameter err!\n");
 		return;
+	}
 
-	IOMMU_ERR("%s restore, map_count %u\n",
+	iommu_dev = sprd_iommu_get_subnode(dev);
+	if (!iommu_dev) {
+		IOMMU_ERR("get null iommu dev\n");
+		return;
+	}
+
+	IOMMU_INFO("%s restore, map_count %u\n",
 		iommu_dev->init_data->name,
 		iommu_dev->map_count);
 
@@ -574,13 +480,66 @@ static void sprd_iommu_pool_show(struct sprd_iommu_dev *iommu_dev)
 		for (index = 0; index < SPRD_MAX_SG_CACHED_CNT; index++) {
 			rec = &(iommu_dev->sg_pool.slot[index]);
 			if (rec->status == SG_SLOT_USED) {
-				IOMMU_ERR("Warning! buffer iova 0x%lx size 0x%lx sg 0x%lx buf %p map_usrs %d should be unmapped!\n",
+				IOMMU_ERR("buffer iova 0x%lx size 0x%lx sg 0x%lx buf %p map_usrs %d\n",
 					rec->iova_addr, rec->iova_size,
 					rec->sg_table_addr, rec->buf_addr,
 					rec->map_usrs);
 			}
 		}
 }
+EXPORT_SYMBOL(sprd_iommu_pool_show);
+
+void sprd_iommu_reg_dump(struct device *dev)
+{
+	int i;
+	u32 *dump_regs;
+	unsigned long ctrl_reg;
+	struct sprd_iommu_dev *iommu_dev = NULL;
+
+	if (!dev) {
+		IOMMU_ERR("null parameter err!\n");
+		return;
+	}
+
+	iommu_dev = sprd_iommu_get_subnode(dev);
+	if (!iommu_dev) {
+		IOMMU_ERR("get null iommu dev\n");
+		return;
+	}
+
+	dump_regs = iommu_dev->init_data->dump_regs;
+	ctrl_reg = iommu_dev->init_data->ctrl_reg;
+
+	for (i = 0; i < iommu_dev->init_data->dump_size; i++)
+		dump_regs[i] = reg_read_dword(ctrl_reg + 4 * i);
+}
+EXPORT_SYMBOL(sprd_iommu_reg_dump);
+
+void sprd_iommu_reg_show(struct device *dev)
+{
+	int i;
+	u32 *dump_regs;
+	struct sprd_iommu_dev *iommu_dev = NULL;
+
+	if (!dev) {
+		IOMMU_ERR("null parameter err!\n");
+		return;
+	}
+
+	iommu_dev = sprd_iommu_get_subnode(dev);
+	if (!iommu_dev) {
+		IOMMU_ERR("get null iommu dev\n");
+		return;
+	}
+
+	dump_regs = (u32 *)(iommu_dev->init_data->dump_regs);
+
+	for (i = 0; i < iommu_dev->init_data->dump_size; i += 4)
+		IOMMU_INFO("%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i * 4,
+			dump_regs[i], dump_regs[i + 1],
+			dump_regs[i + 2], dump_regs[i + 3]);
+}
+EXPORT_SYMBOL(sprd_iommu_reg_show);
 
 int sprd_iommu_attach_device(struct device *dev)
 {
@@ -590,7 +549,7 @@ int sprd_iommu_attach_device(struct device *dev)
 	int ret;
 	int err = -1;
 
-	if (NULL == dev) {
+	if (!dev) {
 		IOMMU_ERR("null parameter err!\n");
 		return -EINVAL;
 	}
@@ -618,20 +577,6 @@ int sprd_iommu_attach_device(struct device *dev)
 }
 EXPORT_SYMBOL(sprd_iommu_attach_device);
 
-int sprd_iommu_dettach_device(struct device *dev)
-{
-	struct device_node *np = NULL;
-
-	if (NULL == dev) {
-		IOMMU_ERR("null parameter err!\n");
-		return -EINVAL;
-	}
-
-	np = dev->of_node;
-
-	return 0;
-}
-
 int sprd_iommu_map(struct device *dev, struct sprd_iommu_map_data *data)
 {
 	int ret = 0;
@@ -642,23 +587,18 @@ int sprd_iommu_map(struct device *dev, struct sprd_iommu_map_data *data)
 	bool buf_insert = true;
 	struct sg_table *table = NULL;
 
-	if (dev == NULL || data == NULL) {
+	if (!dev || !data) {
 		IOMMU_ERR("null parameter err! dev %p data %p\n", dev, data);
 		return -EINVAL;
 	}
 
-	if (data->buf == NULL) {
+	if (!(data->buf)) {
 		IOMMU_ERR("null buf pointer!\n");
 		return -EINVAL;
 	}
 
-	if (!sprd_iommu_is_dev_valid_master(dev)) {
-		IOMMU_ERR("illegal master\n");
-		return -EINVAL;
-	}
-
 	iommu_dev = sprd_iommu_get_subnode(dev);
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		IOMMU_ERR("get null iommu dev\n");
 		return -EINVAL;
 	}
@@ -666,7 +606,7 @@ int sprd_iommu_map(struct device *dev, struct sprd_iommu_map_data *data)
 	spin_lock_irqsave(&iommu_dev->pgt_lock, flag);
 
 	ret = sprd_ion_get_sg(data->buf, &table);
-	if (ret || table == NULL) {
+	if (ret || !table) {
 		IOMMU_ERR("%s get sg error, buf %p size 0x%zx ret %d table %p\n",
 			  iommu_dev->init_data->name,
 			  data->buf, data->iova_size, ret, table);
@@ -761,19 +701,19 @@ int sprd_iommu_map_with_idx(
 	bool buf_insert = true;
 	struct sg_table *table = NULL;
 
-	if (dev == NULL || data == NULL) {
+	if (!dev || !data) {
 		IOMMU_ERR("null parameter err! dev %p data %p\n", dev, data);
 		return -EINVAL;
 	}
 
-	if (data->buf == NULL) {
+	if (!(data->buf)) {
 		IOMMU_ERR("null buf pointer!\n");
 		return -EINVAL;
 	}
 
 
 	iommu_dev = sprd_iommu_get_subnode_with_idx(dev, idx);
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		IOMMU_ERR("get null iommu dev idx %d\n", idx);
 		return -EINVAL;
 	}
@@ -781,7 +721,7 @@ int sprd_iommu_map_with_idx(
 	spin_lock_irqsave(&iommu_dev->pgt_lock, flag);
 
 	ret = sprd_ion_get_sg(data->buf, &table);
-	if (ret || table == NULL) {
+	if (ret || !table) {
 		IOMMU_ERR("%s sg error,buf %p size 0x%zx ret %d table %p\n",
 			  iommu_dev->init_data->name,
 			  data->buf, data->iova_size, ret, table);
@@ -876,18 +816,13 @@ int sprd_iommu_unmap(struct device *dev, struct sprd_iommu_unmap_data *data)
 	void *buf;
 	unsigned long iova;
 
-	if (dev == NULL || data == NULL) {
+	if (!dev || !data) {
 		IOMMU_ERR("null parameter err! dev %p data %p\n", dev, data);
 		return -EINVAL;
 	}
 
-	if (!sprd_iommu_is_dev_valid_master(dev)) {
-		IOMMU_ERR("illegal master\n");
-		return -EINVAL;
-	}
-
 	iommu_dev = sprd_iommu_get_subnode(dev);
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		IOMMU_ERR("get null iommu dev\n");
 		return -EINVAL;
 	}
@@ -920,8 +855,6 @@ int sprd_iommu_unmap(struct device *dev, struct sprd_iommu_unmap_data *data)
 
 	sprd_iommu_remove_sg_iova(iommu_dev, iova, &be_free);
 	if (be_free) {
-		iommu_dev->ch_type = data->ch_type;
-		iommu_dev->channel_id = data->channel_id;
 		ret = iommu_dev->ops->iova_unmap(iommu_dev,
 				iova, data->iova_size);
 		if (ret)
@@ -931,7 +864,6 @@ int sprd_iommu_unmap(struct device *dev, struct sprd_iommu_unmap_data *data)
 		iommu_dev->map_count--;
 		iommu_dev->ops->iova_free(iommu_dev,
 			iova, data->iova_size);
-		iommu_dev->ch_type = SPRD_IOMMU_CH_TYPE_INVALID;
 		IOMMU_DEBUG("%s iova 0x%lx size 0x%zx buf %p\n",
 			  iommu_dev->init_data->name,
 			  iova, data->iova_size, buf);
@@ -961,13 +893,13 @@ int sprd_iommu_unmap_with_idx(
 	void *buf;
 	unsigned long iova;
 
-	if (dev == NULL || data == NULL) {
+	if (!dev || !data) {
 		IOMMU_ERR("null parameter err! dev %p data %p\n", dev, data);
 		return -EINVAL;
 	}
 
 	iommu_dev = sprd_iommu_get_subnode_with_idx(dev, idx);
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		IOMMU_ERR("get null iommu dev idx %d\n", idx);
 		return -EINVAL;
 	}
@@ -1000,8 +932,6 @@ int sprd_iommu_unmap_with_idx(
 
 	sprd_iommu_remove_sg_iova(iommu_dev, iova, &be_free);
 	if (be_free) {
-		iommu_dev->ch_type = data->ch_type;
-		iommu_dev->channel_id = data->channel_id;
 		ret = iommu_dev->ops->iova_unmap(iommu_dev,
 				iova, data->iova_size);
 		if (ret)
@@ -1011,7 +941,6 @@ int sprd_iommu_unmap_with_idx(
 		iommu_dev->map_count--;
 		iommu_dev->ops->iova_free(iommu_dev,
 			iova, data->iova_size);
-		iommu_dev->ch_type = SPRD_IOMMU_CH_TYPE_INVALID;
 		IOMMU_DEBUG("%s iova 0x%lx size 0x%zx buf %p\n",
 			  iommu_dev->init_data->name,
 			  iova, data->iova_size, buf);
@@ -1036,7 +965,7 @@ int sprd_iommu_unmap_orphaned(struct sprd_iommu_unmap_data *data)
 	unsigned long iova;
 	unsigned long flag = 0;
 
-	if (data == NULL) {
+	if (!data) {
 		IOMMU_ERR("null parameter error! data %p\n", data);
 		return -EINVAL;
 	}
@@ -1071,84 +1000,18 @@ int sprd_iommu_unmap_orphaned(struct sprd_iommu_unmap_data *data)
 	return ret;
 }
 
-int sprd_iommu_suspend(struct device *dev)
-{
-	struct sprd_iommu_dev *iommu_dev = NULL;
-	int ret = 0;
-
-	if (NULL == dev) {
-		IOMMU_ERR("null parameter err\n");
-		return -EINVAL;
-	}
-
-	if (!sprd_iommu_is_dev_valid_master(dev)) {
-		IOMMU_ERR("illegal master\n");
-		return -EINVAL;
-	}
-
-	iommu_dev = sprd_iommu_get_subnode(dev);
-	if (NULL == iommu_dev) {
-		IOMMU_ERR("get null iommu dev\n");
-		return -EINVAL;
-	}
-
-	mutex_lock(&iommu_dev->status_mutex);
-	if (iommu_dev->status_count) {
-		iommu_dev->ops->suspend(iommu_dev);
-		iommu_dev->status_count--;
-	} else
-		IOMMU_ERR("%s have not enable!\n", iommu_dev->init_data->name);
-
-	mutex_unlock(&iommu_dev->status_mutex);
-	return ret;
-}
-
-int sprd_iommu_resume(struct device *dev)
-{
-	struct sprd_iommu_dev *iommu_dev = NULL;
-	int ret = 0;
-
-	if (NULL == dev) {
-		IOMMU_ERR("null parameter err!\n");
-		return -EINVAL;
-	}
-
-	if (!sprd_iommu_is_dev_valid_master(dev)) {
-		IOMMU_ERR("illegal master\n");
-		return -EINVAL;
-	}
-
-	iommu_dev = sprd_iommu_get_subnode(dev);
-	if (NULL == iommu_dev) {
-		IOMMU_ERR("get null iommu dev\n");
-		return -EINVAL;
-	}
-
-	mutex_lock(&iommu_dev->status_mutex);
-	iommu_dev->ops->resume(iommu_dev);
-	iommu_dev->status_count++;
-	mutex_unlock(&iommu_dev->status_mutex);
-
-	return ret;
-}
-
 int sprd_iommu_restore(struct device *dev)
 {
 	struct sprd_iommu_dev *iommu_dev = NULL;
 	int ret = 0;
 
-	if (dev == NULL) {
+	if (!dev) {
 		IOMMU_ERR("null parameter err!\n");
 		return -EINVAL;
 	}
 
-	if (!sprd_iommu_is_dev_valid_master(dev)) {
-		IOMMU_ERR("illegal master\n");
-		return -EINVAL;
-	}
-
 	iommu_dev = sprd_iommu_get_subnode(dev);
-	if (iommu_dev == NULL) {
+	if (!iommu_dev) {
 		IOMMU_ERR("get null iommu dev\n");
 		return -EINVAL;
 	}
@@ -1158,7 +1021,10 @@ int sprd_iommu_restore(struct device *dev)
 	else
 		ret = -1;
 
-	sprd_iommu_pool_show(iommu_dev);
+	if (iommu_dev->id != SPRD_IOMMU_VSP &&
+	    iommu_dev->id != SPRD_IOMMU_DISP)
+		sprd_iommu_pool_show(dev);
+
 	return ret;
 }
 EXPORT_SYMBOL(sprd_iommu_restore);
@@ -1197,31 +1063,33 @@ static int sprd_iommu_get_resource(struct device_node *np,
 	if (err < 0)
 		return err;
 
-	IOMMU_INFO("pgt_base phy:0x%lx\n", (unsigned long)(res.start));
-	pdata->pgt_base = (unsigned long)ioremap_nocache(res.start,
-		resource_size(&res));
-	BUG_ON(pdata->pgt_base == 0);
-	/*sharkl2 pgt_size is va range*/
-	pdata->pgt_size = resource_size(&res);
-	IOMMU_INFO("pgt_base:%lx,pgt_size:%zx\n", pdata->pgt_base,
-		pdata->pgt_size);
-
-	err = of_address_to_resource(np, 1, &res);
-	if (err < 0)
-		return err;
-
 	/*sharkl2 ctrl_reg is iommu base reg addr*/
 	IOMMU_INFO("ctrl_reg phy:0x%lx\n", (unsigned long)(res.start));
 	pdata->ctrl_reg = (unsigned long)ioremap_nocache(res.start,
 		resource_size(&res));
-	BUG_ON(!pdata->ctrl_reg);
+	if (!(pdata->ctrl_reg)) {
+		IOMMU_ERR("fail to remap ctrl_reg\n");
+		return -ENOMEM;
+	}
 	IOMMU_INFO("ctrl_reg:0x%lx\n", pdata->ctrl_reg);
+	pdata->dump_size = resource_size(&res) / 4;
 
-	err = of_property_read_u32(np, "iova-base", &val);
+	err = of_property_read_u32(np, "sprd,frc-reg", &val);
+	if (!err) {
+		IOMMU_INFO("frc_reg_addr:0x%x\n", val);
+		pdata->frc_reg_addr = (unsigned long)ioremap_nocache(val,
+				       PAGE_SIZE);
+		if (!(pdata->frc_reg_addr)) {
+			IOMMU_ERR("fail to remap frc_reg\n");
+			return -ENOMEM;
+		}
+	}
+
+	err = of_property_read_u32(np, "sprd,iova-base", &val);
 	if (err < 0)
 		return err;
 	pdata->iova_base = val;
-	err = of_property_read_u32(np, "iova-size", &val);
+	err = of_property_read_u32(np, "sprd,iova-size", &val);
 	if (err < 0)
 		return err;
 	pdata->iova_size = val;
@@ -1244,15 +1112,6 @@ static int sprd_iommu_get_resource(struct device_node *np,
 	} else {
 		IOMMU_INFO("reserved fault page phy:0x%x\n", val);
 		pdata->fault_page = val;
-	}
-
-	err = of_property_read_u32(np, "sprd,reserved-rr-page", &val);
-	if (err) {
-		IOMMU_INFO("no reserved rr page addr\n");
-		pdata->re_route_page = 0;
-	} else {
-		IOMMU_INFO("reserved rr page phy:0x%x\n", val);
-		pdata->re_route_page = val;
 	}
 
 	/*get mmu page table reserved memory*/
@@ -1304,13 +1163,13 @@ static int sprd_iommu_probe(struct platform_device *pdev)
 	IOMMU_INFO("start\n");
 
 	iommu_dev = kzalloc(sizeof(struct sprd_iommu_dev), GFP_KERNEL);
-	if (NULL == iommu_dev) {
+	if (!iommu_dev) {
 		IOMMU_ERR("fail to kzalloc\n");
 		return -ENOMEM;
 	}
 
 	pdata = kzalloc(sizeof(struct sprd_iommu_init_data), GFP_KERNEL);
-	if (NULL == pdata) {
+	if (!pdata) {
 		IOMMU_ERR("fail to kzalloc\n");
 		kfree(iommu_dev);
 		return -ENOMEM;
@@ -1321,194 +1180,32 @@ static int sprd_iommu_probe(struct platform_device *pdev)
 
 	switch (pdata->id) {
 	/*for sharkle iommu*/
-	case IOMMU_EXLE_VSP:
-	case IOMMU_EXLE_DCAM:
-	case IOMMU_EXLE_CPP:
-	case IOMMU_EXLE_GSP:
-	case IOMMU_EXLE_JPG:
-	case IOMMU_EXLE_DISP:
-	case IOMMU_EXLE_ISP:
+	case IOMMU_EX_VSP:
+	case IOMMU_EX_DCAM:
+	case IOMMU_EX_CPP:
+	case IOMMU_EX_GSP:
+	case IOMMU_EX_JPG:
+	case IOMMU_EX_DISP:
+	case IOMMU_EX_ISP:
 	{
-		pdata->iommuex_rev = 7;
 		iommu_dev->ops = &sprd_iommuex_hw_ops;
-		if (pdata->id == IOMMU_EXLE_GSP)
-			pdata->id = IOMMU_EX_GSP;
-		else if (pdata->id == IOMMU_EXLE_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_EXLE_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_EXLE_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_EXLE_ISP)
-			pdata->id = IOMMU_EX_ISP;
-		else if (pdata->id == IOMMU_EXLE_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_EXLE_JPG)
-			pdata->id = IOMMU_EX_JPG;
-
-		break;
-	}
-	/*for pike2 iommu*/
-	case IOMMU_EXPK2_VSP:
-	case IOMMU_EXPK2_DCAM:
-	case IOMMU_EXPK2_CPP:
-	case IOMMU_EXPK2_GSP:
-	case IOMMU_EXPK2_JPG:
-	case IOMMU_EXPK2_DISP:
-	case IOMMU_EXPK2_ISP:
-	{
-		pdata->iommuex_rev = 8;
-		iommu_dev->ops = &sprd_iommuex_hw_ops;
-		if (pdata->id == IOMMU_EXPK2_GSP)
-			pdata->id = IOMMU_EX_GSP;
-		else if (pdata->id == IOMMU_EXPK2_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_EXPK2_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_EXPK2_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_EXPK2_ISP)
-			pdata->id = IOMMU_EX_ISP;
-		else if (pdata->id == IOMMU_EXPK2_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_EXPK2_JPG)
-			pdata->id = IOMMU_EX_JPG;
-
-		break;
-	}
-	/*for sharkl3 iommu*/
-	case IOMMU_EXL3_VSP:
-	case IOMMU_EXL3_DCAM:
-	case IOMMU_EXL3_CPP:
-	case IOMMU_EXL3_JPG:
-	case IOMMU_EXL3_DISP:
-	case IOMMU_EXL3_ISP:
-	{
-		pdata->iommuex_rev = 9;
-		iommu_dev->ops = &sprd_iommuex_hw_ops;
-		if (pdata->id == IOMMU_EXL3_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_EXL3_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_EXL3_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_EXL3_ISP)
-			pdata->id = IOMMU_EX_ISP;
-		else if (pdata->id == IOMMU_EXL3_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_EXL3_JPG)
-			pdata->id = IOMMU_EX_JPG;
-
-		break;
-	}
-	/*for sharkl5 iommu*/
-	case IOMMU_EXL5_VSP:
-	case IOMMU_EXL5_DCAM:
-	case IOMMU_EXL5_CPP:
-	case IOMMU_EXL5_JPG:
-	case IOMMU_EXL5_DISP:
-	case IOMMU_EXL5_ISP:
-	case IOMMU_EXL5_FD:
-	{
-		pdata->iommuex_rev = 10;
-		iommu_dev->ops = &sprd_iommuex_hw_ops;
-		if (pdata->id == IOMMU_EXL5_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_EXL5_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_EXL5_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_EXL5_ISP)
-			pdata->id = IOMMU_EX_NEWISP;
-		else if (pdata->id == IOMMU_EXL5_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_EXL5_JPG)
-			pdata->id = IOMMU_EX_JPG;
-		else if (pdata->id == IOMMU_EXL5_FD)
-			pdata->id = IOMMU_EX_FD;
-
-
 		break;
 	}
 	/*for roc1 iommu*/
-	case IOMMU_EXROC1_VSP:
-	case IOMMU_EXROC1_DCAM:
-	case IOMMU_EXROC1_CPP:
-	case IOMMU_EXROC1_JPG:
-	case IOMMU_EXROC1_DISP:
-	case IOMMU_EXROC1_ISP:
-	case IOMMU_EXROC1_FD:
-	case IOMMU_EXROC1_AI:
-	case IOMMU_EXROC1_EPP:
-	case IOMMU_EXROC1_EDP:
+	case IOMMU_VAU_VSP:
+	case IOMMU_VAU_DCAM:
+	case IOMMU_VAU_CPP:
+	case IOMMU_VAU_JPG:
+	case IOMMU_VAU_DISP:
+	case IOMMU_VAU_ISP:
+	case IOMMU_VAU_FD:
+	case IOMMU_VAU_NPU:
+	case IOMMU_VAU_EPP:
+	case IOMMU_VAU_EDP:
+	case IOMMU_VAU_IDMA:
+	case IOMMU_VAU_VDMA:
 	{
-		pdata->iommuex_rev = 11;
-		iommu_dev->ops = &sprd_iommuex_hw_ops;
-		if (pdata->id == IOMMU_EXROC1_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_EXROC1_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_EXROC1_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_EXROC1_ISP)
-			pdata->id = IOMMU_EX_NEWISP;
-		else if (pdata->id == IOMMU_EXROC1_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_EXROC1_JPG)
-			pdata->id = IOMMU_EX_JPG;
-		else if (pdata->id == IOMMU_EXROC1_FD)
-			pdata->id = IOMMU_EX_FD;
-		else if (pdata->id == IOMMU_EXROC1_AI)
-			pdata->id = IOMMU_EX_AI;
-		else if (pdata->id == IOMMU_EXROC1_EPP)
-			pdata->id = IOMMU_EX_EPP;
-		else if (pdata->id == IOMMU_EXROC1_EDP)
-			pdata->id = IOMMU_EX_EDP;
-
-		break;
-	}
-	/*for roc1 iommu*/
-	case IOMMU_VAUL5P_VSP:
-	case IOMMU_VAUL5P_DCAM:
-	case IOMMU_VAUL5P_CPP:
-	case IOMMU_VAUL5P_JPG:
-	case IOMMU_VAUL5P_DISP:
-	case IOMMU_VAUL5P_ISP:
-	case IOMMU_VAUL5P_FD:
-	case IOMMU_VAUL5P_AI:
-	case IOMMU_VAUL5P_EPP:
-	case IOMMU_VAUL5P_EDP:
-	case IOMMU_VAUL5P_IDMA:
-	case IOMMU_VAUL5P_VDMA:
-	{
-		pdata->iommuex_rev = 12;
 		iommu_dev->ops = &sprd_iommuvau_hw_ops;
-		if (pdata->id == IOMMU_VAUL5P_DISP)
-			pdata->id = IOMMU_EX_DISP;
-		else if (pdata->id == IOMMU_VAUL5P_VSP)
-			pdata->id = IOMMU_EX_VSP;
-		else if (pdata->id == IOMMU_VAUL5P_DCAM)
-			pdata->id = IOMMU_EX_DCAM;
-		else if (pdata->id == IOMMU_VAUL5P_ISP)
-			pdata->id = IOMMU_EX_NEWISP;
-		else if (pdata->id == IOMMU_VAUL5P_CPP)
-			pdata->id = IOMMU_EX_CPP;
-		else if (pdata->id == IOMMU_VAUL5P_JPG)
-			pdata->id = IOMMU_EX_JPG;
-		else if (pdata->id == IOMMU_VAUL5P_FD)
-			pdata->id = IOMMU_EX_FD;
-		else if (pdata->id == IOMMU_VAUL5P_AI)
-			pdata->id = IOMMU_EX_AI;
-		else if (pdata->id == IOMMU_VAUL5P_EPP)
-			pdata->id = IOMMU_EX_EPP;
-		else if (pdata->id == IOMMU_VAUL5P_EDP)
-			pdata->id = IOMMU_EX_EDP;
-		else if (pdata->id == IOMMU_VAUL5P_IDMA)
-			pdata->id = IOMMU_EX_IDMA;
-		else if (pdata->id == IOMMU_VAUL5P_VDMA)
-			pdata->id = IOMMU_EX_VDMA;
-
-
 		break;
 	}
 
@@ -1528,33 +1225,29 @@ static int sprd_iommu_probe(struct platform_device *pdev)
 
 	/*If ddr frequency >= 500Mz, iommu need enable div2 frequency,
 	 * because of limit of iommu iram frq.*/
-	iommu_dev->div2_frq = 500;
-	iommu_dev->light_sleep_en = false;
-	iommu_dev->drv_dev = &pdev->dev;
 	iommu_dev->init_data = pdata;
 	iommu_dev->map_count = 0;
-	iommu_dev->status_count = 0;
-	iommu_dev->ch_type = SPRD_IOMMU_CH_TYPE_INVALID;
-	iommu_dev->channel_id = 0;
 	iommu_dev->init_data->name = (char *)(
-		(of_match_node(sprd_iommu_ids, np))->compatible
-		);
+		(of_match_node(sprd_iommu_ids, np))->compatible);
+	iommu_dev->init_data->dump_regs = kcalloc(iommu_dev->init_data->dump_size,
+				       sizeof(u32), GFP_KERNEL);
+	if (!iommu_dev->init_data->dump_regs)
+		return -ENOMEM;
 
 	err = iommu_dev->ops->init(iommu_dev, pdata);
 	if (err) {
 		IOMMU_ERR("iommu %s : failed init %d.\n", pdata->name, err);
 		goto errout;
 	}
-	atomic_set(&iommu_dev->iommu_dev_cnt, 0);
 	spin_lock_init(&iommu_dev->pgt_lock);
-	mutex_init(&iommu_dev->status_mutex);
 	memset(&iommu_dev->sg_pool, 0, sizeof(struct sprd_iommu_sg_pool));
+#ifdef SPRD_DEBUG
 	sprd_iommu_sysfs_create(iommu_dev, iommu_dev->init_data->name);
+#endif
 	platform_set_drvdata(pdev, iommu_dev);
 
 	np->data  = iommu_dev;
 	sprd_iommu_set_list(iommu_dev);
-	pm_runtime_enable(&pdev->dev);
 	IOMMU_INFO("%s end\n", iommu_dev->init_data->name);
 	return 0;
 
@@ -1568,7 +1261,9 @@ static int sprd_iommu_remove(struct platform_device *pdev)
 {
 	struct sprd_iommu_dev *iommu_dev = platform_get_drvdata(pdev);
 
+#ifdef SPRD_DEBUG
 	sprd_iommu_sysfs_destroy(iommu_dev, iommu_dev->init_data->name);
+#endif
 	iommu_dev->ops->exit(iommu_dev);
 	gen_pool_destroy(iommu_dev->pool);
 	kfree(iommu_dev);

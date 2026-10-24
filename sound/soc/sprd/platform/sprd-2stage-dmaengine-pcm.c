@@ -183,7 +183,8 @@ static struct dma_chan *dma_chan[DMA_CHAN_MAX] = { NULL };
 	SNDRV_PCM_INFO_INTERLEAVED | \
 	SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME)
 #define SPRD_SNDRV_PCM_FMTBIT (SNDRV_PCM_FMTBIT_S16_LE | \
-			       SNDRV_PCM_FMTBIT_S24_LE)
+			       SNDRV_PCM_FMTBIT_S24_LE | \
+			       SNDRV_PCM_FMTBIT_S32_LE)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -747,6 +748,8 @@ static int sprd_pcm_alloc_dma_cfg(struct snd_pcm_substream *substream,
 	sprd_rtd->dma_cfg_buf2 =
 	    devm_kzalloc(dev,
 			 sprd_rtd->hw_chan2 * linklist_node_size2, GFP_KERNEL);
+	if (!sprd_rtd->dma_cfg_buf2)
+		return -ENOMEM;
 
 	sprd_rtd->dma_cfg_buf2->sg =
 		(struct scatterlist *)((u8 *)sprd_rtd->dma_cfg_buf2 +
@@ -756,11 +759,6 @@ static int sprd_pcm_alloc_dma_cfg(struct snd_pcm_substream *substream,
 	    ("%s cfg_buf2=%p, stage[%d] size=%#x\n",
 	     __func__, sprd_rtd->dma_cfg_buf2, stages,
 	     sprd_rtd->hw_chan2 * linklist_node_size2);
-	if (!sprd_rtd->dma_cfg_buf2) {
-		pr_err("%s %d alloc failed size =%#x\n", __func__, __LINE__,
-		       sprd_rtd->hw_chan2 * linklist_node_size2);
-		return -ENOMEM;
-	}
 
 	sprd_rtd->dma_callback_data2 =
 	    devm_kzalloc(dev, sprd_rtd->hw_chan2 *
@@ -1075,7 +1073,7 @@ static void hw_params_config(struct snd_pcm_substream *substream,
 		hw->info = SPRD_SNDRV_PCM_INFO_COMMON;
 		hw->formats = SPRD_SNDRV_PCM_FMTBIT;
 		hw->period_bytes_min = 8 * 2;
-		hw->period_bytes_max = I2S_BUFFER_BYTES_MAX;
+		hw->period_bytes_max = I2S_BUFFER_BYTES_MAX / 2;
 		hw->buffer_bytes_max = I2S_BUFFER_BYTES_MAX;
 		hw->periods_max = PAGE_SIZE / DMA_LINKLIST_CFG_NODE_SIZE;
 	} else {
@@ -1119,7 +1117,7 @@ static void hw_params_config(struct snd_pcm_substream *substream,
 			hw->buffer_bytes_max =
 				NORMAL_PLAYBACK_BUFFER_BYTES_MAX;
 		} else if (sprd_is_i2s(srtd->cpu_dai)) {
-			hw->period_bytes_max = 32 * 2 * 100;
+			hw->period_bytes_max = I2S_BUFFER_BYTES_MAX / 2;
 			hw->buffer_bytes_max = I2S_BUFFER_BYTES_MAX;
 		}
 	}

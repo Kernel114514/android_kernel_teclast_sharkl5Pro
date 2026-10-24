@@ -126,6 +126,9 @@ struct minidump_info  minidump_info_g =	{
 			{"log_buf", 0, 0, 0, 0, 0},
 			{"ylog_buf", 0, 0, 0, 0, 0},
 			{"kernel_pt", 0, 0, 0, 0, 0},
+#ifdef CONFIG_SPRD_NATIVE_HANG_MONITOR
+			{"nhang", 0, 0, 0, 0, 0},
+#endif
 			{"", 0, 0, 0, 0, 0},
 
 		},
@@ -137,6 +140,9 @@ struct minidump_info  minidump_info_g =	{
 static int prepare_exception_info(struct pt_regs *regs,
 			struct task_struct *tsk, const char *reason);
 static char *ylog_buffer;
+#ifdef CONFIG_SPRD_NATIVE_HANG_MONITOR
+extern void get_native_hang_monitor_buffer(unsigned long *addr, unsigned long *size, unsigned long *start);
+#endif
 #endif /*	minidump code end	*/
 typedef char note_buf_t[SYSDUMP_NOTE_BYTES];
 
@@ -461,10 +467,14 @@ static inline void sprd_debug_save_context(void)
 }
 
 
-void sysdump_enter(int enter_id, const char *reason, struct pt_regs *regs)
+static int sysdump_panic_event(struct notifier_block *self,
+					unsigned long val,
+					void *reason)
 {
-	struct pt_regs *pregs;
+	struct pt_regs *pregs = NULL;
+	static int enter_id;
 
+	pr_emerg("(%s) ------ in (%d)\n", __func__, enter_id);
 	bust_spinlocks(1);
 	if (sprd_sysdump_init == 0) {
 		unsigned long sprd_sysdump_info_paddr;
@@ -479,7 +489,6 @@ void sysdump_enter(int enter_id, const char *reason, struct pt_regs *regs)
 
 		sprd_sysdump_info = (struct sysdump_info *)phys_to_virt(sprd_sysdump_info_paddr);
 		pr_emerg("vaddr is %p, paddr is %p.\n", sprd_sysdump_info, (void *)sprd_sysdump_info_paddr);
-
 		crash_notes = &crash_notes_temp;
 	}
 
@@ -487,10 +496,7 @@ void sysdump_enter(int enter_id, const char *reason, struct pt_regs *regs)
 	sprd_sysdump_extra.enter_cpu = smp_processor_id();
 
 	pregs = &sprd_sysdump_extra.cpu_context[sprd_sysdump_extra.enter_cpu];
-	if (regs)
-		memcpy(pregs, regs, sizeof(*regs));
-	else
-		crash_setup_regs((struct pt_regs *)pregs, NULL);
+	crash_setup_regs((struct pt_regs *)pregs, NULL);
 
 	crash_note_save_cpu(pregs, sprd_sysdump_extra.enter_cpu);
 	sprd_debug_save_context();
@@ -512,7 +518,7 @@ void sysdump_enter(int enter_id, const char *reason, struct pt_regs *regs)
 	pr_emerg("\n");
 
 	if (reason != NULL)
-		sysdump_prepare_info(enter_id, reason, regs);
+		sysdump_prepare_info(enter_id, reason, pregs);
 
 #ifdef CONFIG_SPRD_MINI_SYSDUMP
 	/* when track regs use pregs_die,  others use now regs*/
@@ -563,25 +569,15 @@ void sysdump_enter(int enter_id, const char *reason, struct pt_regs *regs)
 		while (1)
 			;
 #endif
-
-	if (reason != NULL && strstr(reason, "tospanic")) {
-		machine_restart("tospanic");
-		return;
-	}
-#ifdef CONFIG_X86_64
-	if (!is_x86_mobilevisor())
-#endif
-	{
-		machine_restart("panic");
-	}
-	return;
+	return NOTIFY_DONE;
 }
 
 void sysdump_ipi(struct pt_regs *regs)
 {
 	int cpu = smp_processor_id();
 
-	if (sprd_sysdump_extra.enter_cpu != -1) {
+	/*do flush and save only in oops path */
+	if (oops_in_progress) {
 		memcpy((void *)&(sprd_sysdump_extra.cpu_context[cpu]),
 		       (void *)regs, sizeof(struct pt_regs));
 		crash_note_save_cpu(regs, cpu);
@@ -1057,6 +1053,23 @@ void section_info_ylog_buf(int section_index)
 	minidump_info_g.section_info_total.section_info[i].section_size = YLOG_BUF_SIZE;
 }
 
+#ifdef CONFIG_SPRD_NATIVE_HANG_MONITOR
+void section_native_hang(int section_index)
+{
+	int i = section_index;
+	long vaddr, len, start;
+
+	get_native_hang_monitor_buffer(&vaddr, &len, &start);
+	pr_emerg("%s in. \n",  __func__);
+	minidump_info_g.section_info_total.section_info[i].section_start_vaddr = vaddr;
+	minidump_info_g.section_info_total.section_info[i].section_end_vaddr = vaddr + len;
+	minidump_info_g.section_info_total.section_info[i].section_start_paddr = __pa(minidump_info_g.section_info_total.section_info[i].section_start_vaddr);
+	minidump_info_g.section_info_total.section_info[i].section_end_paddr = __pa(minidump_info_g.section_info_total.section_info[i].section_end_vaddr);
+	minidump_info_g.section_info_total.section_info[i].section_size = len;
+	pr_emerg("%s out.\n", __func__);
+}
+
+#endif
 void section_info_pt(int section_index)
 {
 	int i = section_index;
@@ -1167,6 +1180,10 @@ void minidump_info_init(void)
 			section_info_pt(i);
 		} else if (!memcmp(minidump_info_g.section_info_total.section_info[i].section_name, "per_cpu", strlen("per_cpu"))) {
 			section_info_per_cpu(i);
+#ifdef CONFIG_SPRD_NATIVE_HANG_MONITOR
+		} else if (!memcmp(minidump_info_g.section_info_total.section_info[i].section_name, "nhang", strlen("nhang"))) {
+			section_native_hang(i);
+#endif
 		} else {
 			minidump_info_g.section_info_total.section_info[i].section_start_paddr = __pa(minidump_info_g.section_info_total.section_info[i].section_start_vaddr);
 			minidump_info_g.section_info_total.section_info[i].section_end_paddr = __pa(minidump_info_g.section_info_total.section_info[i].section_end_vaddr);
@@ -1437,6 +1454,12 @@ static int prepare_exception_info(struct pt_regs *regs,
 	return 0;
 }
 #endif  /*	minidump code end	*/
+
+static struct notifier_block sysdump_panic_event_nb = {
+	.notifier_call	= sysdump_panic_event,
+	.priority	= INT_MAX,
+};
+
 int sysdump_sysctl_init(void)
 {
 	/*get_sprd_sysdump_info_paddr(); */
@@ -1467,6 +1490,9 @@ int sysdump_sysctl_init(void)
 	if (sysdump_shash_init())
 		return -ENOMEM;
 
+	/*	register sysdump panic notifier  */
+	atomic_notifier_chain_register(&panic_notifier_list,
+					&sysdump_panic_event_nb);
 	sprd_sysdump_init = 1;
 
 	sprd_sysdump_enable_prepare();

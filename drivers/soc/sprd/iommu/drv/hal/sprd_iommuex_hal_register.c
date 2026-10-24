@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2019 Spreadtrum Communications Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #include "sprd_iommuex_hal_register.h"
 
 bool mmu_ex_check_en(ulong ctrl_base_addr, u32 iommu_id)
@@ -51,16 +64,8 @@ void mmu_ex_vaorbypass_clkgate_enable_combined(ulong ctrl_base_addr,
 
 }
 
-
-void mmu_ex_clock_gate_enable(ulong ctrl_base_addr, u32 cg_enable)
-{
-	ulong reg_addr = ctrl_base_addr;
-
-	putbit(reg_addr, cg_enable, 1);
-}
-
 void mmu_ex_vaout_bypass_enable(ulong ctrl_base_addr, u32 iommu_id,
-		u32 iommu_type, bool vaor_bp_en)
+				bool vaor_bp_en)
 {
 	ulong reg_addr = ctrl_base_addr;
 	u32 reg_value;
@@ -120,7 +125,7 @@ void mmu_ex_tlb_update(ulong ctrl_base_addr, enum sprd_iommu_ch_type ch_type,
 	reg_write_dword(reg_addr, new_value);
 }
 
-void mmu_ex_update(ulong ctrl_base_addr, u32 iommu_id, u32 iommu_type)
+void mmu_ex_update(ulong ctrl_base_addr, u32 iommu_id)
 {
 	ulong reg_addr = ctrl_base_addr + UPDATE_OFFSET;
 	reg_write_dword(reg_addr, 0xffffffff);
@@ -239,26 +244,6 @@ void mmu_ex_ppn2_range(ulong ctrl_base_addr, u32 iommu_id, ulong ppn2_range)
 	reg_write_dword(reg_addr, (ppn2_range >> 20));
 }
 
-void mmu_ex_reg_authority(ulong ctrl_base_addr, u32 iommu_id, ulong reg_ctrl)
-{
-	ulong reg_addr = ctrl_base_addr;
-
-	if (iommu_id == IOMMU_EX_ISP)
-		reg_addr += 0x3FC;
-	else
-		reg_addr += REG_AUTHORITY_OFFSET;
-
-	putbit(reg_addr, reg_ctrl, 0);
-}
-
-void mmu_ex_write_pate_totable(ulong pgt_base_addr,
-	u32 entry_index, u32 ppn_addr)
-{
-	ulong pgt_addr = pgt_base_addr + entry_index * 4;
-
-	reg_write_dword(pgt_addr, ppn_addr);
-}
-
 u32 mmu_ex_read_page_entry(ulong page_table_addr, u32 entry_index)
 {
 	ulong reg_addr = page_table_addr + entry_index * 4;
@@ -268,20 +253,8 @@ u32 mmu_ex_read_page_entry(ulong page_table_addr, u32 entry_index)
 	return phy_addr;
 }
 
-void mmu_ex_frc_copy(ulong ctrl_base_addr, u32 iommu_id, u32 iommu_type)
+void mmu_ex_frc_copy(ulong frc_reg_addr, u32 iommu_id)
 {
-	ulong reg_addr;
-
-	if (iommu_id == IOMMU_EX_DCAM) {
-		if (iommu_type == SPRD_IOMMUEX_SHARKLE)
-			reg_addr = ctrl_base_addr + 0x2010;
-		else if (iommu_type == SPRD_IOMMUEX_PIKE2)
-			reg_addr = ctrl_base_addr + 0x4;
-		else if (iommu_type == SPRD_IOMMUEX_SHARKL3)
-			reg_addr = ctrl_base_addr + 0x3010;
-		else
-			return;
-
-		putbit(reg_addr, 1, 0);
-	}
+	if (iommu_id == IOMMU_EX_DCAM)
+		putbit(frc_reg_addr, 1, 0);
 }

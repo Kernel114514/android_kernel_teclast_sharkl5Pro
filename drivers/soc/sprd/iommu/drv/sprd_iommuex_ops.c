@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Spreadtrum Communications Inc.
+ * Copyright (C) 2019 Spreadtrum Communications Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,85 +29,13 @@
 #include <linux/device.h>
 #include "api/sprd_iommu_api.h"
 
-static void sprd_iommuex_clk_enable(struct sprd_iommu_dev *dev)
-{
-	if (dev->mmu_mclock)
-		clk_prepare_enable(dev->mmu_mclock);
-
-	if (dev->mmu_clock)
-		clk_prepare_enable(dev->mmu_clock);
-
-	if (dev->mmu_axiclock)
-		clk_prepare_enable(dev->mmu_axiclock);
-}
-
-static void sprd_iommuex_clk_disable(struct sprd_iommu_dev *dev)
-{
-	if (dev->mmu_clock)
-		clk_disable_unprepare(dev->mmu_clock);
-
-	if (dev->mmu_mclock)
-		clk_disable_unprepare(dev->mmu_mclock);
-
-	if (dev->mmu_axiclock)
-		clk_disable_unprepare(dev->mmu_axiclock);
-}
-
-static int get_iommuex_type(int revision, int *pchip)
-{
-	enum sprd_iommu_type type = SPRD_IOMMU_NOT_SUPPORT;
-
-	switch (revision) {
-	case 7:
-	{
-		type = SPRD_IOMMUEX_SHARKLE;
-		break;
-	}
-	case 8:
-	{
-		type = SPRD_IOMMUEX_PIKE2;
-		break;
-	}
-	case 9:
-	{
-		type = SPRD_IOMMUEX_SHARKL3;
-		break;
-	}
-	case 10:
-	{
-		type = SPRD_IOMMUEX_SHARKL5;
-		break;
-	}
-	case 11:
-	{
-		type = SPRD_IOMMUEX_ROC1;
-		break;
-	}
-	default:
-	{
-		type  = SPRD_IOMMU_NOT_SUPPORT;
-		break;
-	}
-	}
-	return type;
-}
-
 static int sprd_iommuex_hw_init(struct sprd_iommu_dev *dev,
 			struct sprd_iommu_init_data *data)
 {
-	void *p_iommu_hdl = NULL;
-	struct device *dev_priv = (struct device *)(dev->drv_dev);
-	struct sprd_iommu_init_param iommu_init_param;
-	struct device_node *np = NULL;
-	int chip = 0;
+	void *iommu_hdl = NULL;
+	struct sprd_iommu_init_param iommu_init_param = {};
 
 	IOMMU_INFO("begin\n");
-
-	np = dev_priv->of_node;
-	if (!np)
-		return -1;
-
-	memset(&iommu_init_param, 0, sizeof(struct sprd_iommu_init_param));
 
 	dev->pool = gen_pool_create(12, -1);
 	if (!dev->pool) {
@@ -116,17 +44,14 @@ static int sprd_iommuex_hw_init(struct sprd_iommu_dev *dev,
 	}
 
 	gen_pool_add(dev->pool, data->iova_base, data->iova_size, -1);
-	iommu_init_param.iommu_type =
-				get_iommuex_type(data->iommuex_rev, &chip);
-	iommu_init_param.chip = chip;
 
 	/*master reg base addr*/
-	iommu_init_param.master_reg_addr = data->pgt_base;
+	iommu_init_param.frc_reg_addr = data->frc_reg_addr;
 	/*iommu base reg*/
 	iommu_init_param.ctrl_reg_addr = data->ctrl_reg;
 	/*va base addr*/
-	iommu_init_param.fm_base_addr = data->iova_base;
-	iommu_init_param.fm_ram_size = data->iova_size;
+	iommu_init_param.vpn_base_addr = data->iova_base;
+	iommu_init_param.vpn_range = data->iova_size;
 	iommu_init_param.iommu_id = data->id;
 	iommu_init_param.faultpage_addr = data->fault_page;
 
@@ -135,11 +60,10 @@ static int sprd_iommuex_hw_init(struct sprd_iommu_dev *dev,
 
 	if (data->id == IOMMU_EX_ISP)
 		iommu_init_param.pgt_size = data->pgt_size;
-	/*sprd_iommuex_clk_enable(dev);*/
 
-	sprd_iommudrv_init(&iommu_init_param, (sprd_iommu_hdl *)&p_iommu_hdl);
+	sprd_iommudrv_init(&iommu_init_param, (sprd_iommu_hdl *)&iommu_hdl);
 
-	dev->private = p_iommu_hdl;
+	dev->private = iommu_hdl;
 	IOMMU_INFO("done\n");
 
 	return 0;
@@ -154,7 +78,7 @@ static int sprd_iommuex_hw_exit(struct sprd_iommu_dev *dev)
 
 static unsigned long sprd_iommuex_iova_alloc(struct sprd_iommu_dev *dev,
 					size_t iova_length,
-					struct sprd_iommu_map_data  *p_param)
+					struct sprd_iommu_map_data  *param)
 {
 	unsigned long iova = 0;
 
@@ -171,19 +95,15 @@ static void sprd_iommuex_iova_free(struct sprd_iommu_dev *dev,
 static int sprd_iommuex_iova_map(struct sprd_iommu_dev *dev, unsigned long iova,
 				size_t iova_length,
 				struct sg_table *table,
-				struct sprd_iommu_map_data  *p_param)
+				struct sprd_iommu_map_data  *param)
 {
 	int err = -1;
-	struct sprd_iommu_map_param map_param;
+	struct sprd_iommu_map_param map_param = {};
 
-	memset(&map_param, 0, sizeof(map_param));
-	/*TODO:warning need deal*/
-	map_param.channel_type = (enum sprd_iommu_ch_type)p_param->ch_type;
-	map_param.channel_bypass = 0;
 	map_param.start_virt_addr = iova;
 	map_param.total_map_size = iova_length;
 
-	map_param.p_sg_table = table;
+	map_param.sg_table = table;
 	err = sprd_iommudrv_map(dev->private, &map_param);
 	if (err == SPRD_NO_ERR)
 		err = 0;
@@ -192,19 +112,6 @@ static int sprd_iommuex_iova_map(struct sprd_iommu_dev *dev, unsigned long iova,
 		err = -1;
 	}
 	return err;
-}
-
-static int sprd_iommuex_hw_suspend(struct sprd_iommu_dev *dev)
-{
-	sprd_iommuex_clk_disable(dev);
-	return 0;
-}
-
-static int sprd_iommuex_hw_resume(struct sprd_iommu_dev *dev)
-{
-	/*set clk back first*/
-	sprd_iommuex_clk_enable(dev);
-	return 0;
 }
 
 static int sprd_iommuex_hw_restore(struct sprd_iommu_dev *dev)
@@ -225,13 +132,10 @@ static int sprd_iommuex_iova_unmap(struct sprd_iommu_dev *dev,
 {
 	int err = -1;
 
-	struct sprd_iommu_unmap_param unmap_param;
+	struct sprd_iommu_unmap_param unmap_param = {};
 
-	memset(&unmap_param, 0, sizeof(struct sprd_iommu_unmap_param));
 	unmap_param.start_virt_addr = iova;
 	unmap_param.total_map_size = iova_length;
-	unmap_param.ch_type = (enum sprd_iommu_ch_type)(dev->ch_type);
-	unmap_param.ch_id = dev->channel_id;
 
 	err = sprd_iommudrv_unmap(dev->private, &unmap_param);
 
@@ -246,13 +150,10 @@ static int sprd_iommuex_iova_unmap_orphaned(struct sprd_iommu_dev *dev,
 {
 	int err = -1;
 
-	struct sprd_iommu_unmap_param unmap_param;
+	struct sprd_iommu_unmap_param unmap_param = {};
 
-	memset(&unmap_param, 0, sizeof(struct sprd_iommu_unmap_param));
 	unmap_param.start_virt_addr = iova;
 	unmap_param.total_map_size = iova_length;
-	unmap_param.ch_type = (enum sprd_iommu_ch_type)(dev->ch_type);
-	unmap_param.ch_id = dev->channel_id;
 
 	err = sprd_iommudrv_unmap_orphaned(dev->private, &unmap_param);
 
@@ -283,7 +184,5 @@ struct sprd_iommu_ops sprd_iommuex_hw_ops = {
 	.dump = NULL,
 	.open = NULL,
 	.release = sprd_iommuex_hw_release,
-	.suspend = sprd_iommuex_hw_suspend,
-	.resume = sprd_iommuex_hw_resume,
 	.iova_unmap_orphaned = sprd_iommuex_iova_unmap_orphaned,
 };

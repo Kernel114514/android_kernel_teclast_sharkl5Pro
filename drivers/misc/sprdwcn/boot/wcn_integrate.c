@@ -24,6 +24,8 @@
 
 static int wcn_open_module;
 static int wcn_module_state_change;
+/* format: marlin2-built-in_id0_id1 */
+static char wcn_chip_name[40];
 char functionmask[8];
 marlin_reset_callback marlin_reset_func;
 void *marlin_callback_para;
@@ -250,6 +252,20 @@ int wcn_get_btwf_power_status(void)
 	return s_wcn_device.btwf_device->power_state;
 }
 
+int marlin_get_power(void)
+{
+	if (s_wcn_device.gnss_device &&
+	    s_wcn_device.gnss_device->power_state)
+		return 1;
+
+	if (s_wcn_device.btwf_device &&
+	    s_wcn_device.btwf_device->power_state)
+		return 1;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(marlin_get_power);
+
 phys_addr_t wcn_get_btwf_init_status_addr(void)
 {
 	return s_wcn_device.btwf_device->base_addr +
@@ -339,8 +355,12 @@ void wcn_set_module_state(bool status)
 	else
 		wcn_open_module = 0;
 	wcn_module_state_change = 1;
-	if (status)
+	if (status) {
 		loopcheck_ready_set();
+		start_loopcheck();
+	} else if (wcn_open_module == 0) {
+		stop_loopcheck();
+	}
 	wcn_set_download_status(status);
 	WCN_INFO("cp2 power status:%d\n", status);
 	wakeup_loopcheck_int();
@@ -844,6 +864,17 @@ u32 wcn_parse_platform_chip_id(struct wcn_device *wcn_dev)
 
 	return 0;
 }
+
+const char *wcn_get_chip_name(void)
+{
+	snprintf(wcn_chip_name, sizeof(wcn_chip_name),
+		 "marlin2-built-in_0x%x_0x%x",
+		 g_platform_chip_id.aon_chip_id0,
+		 g_platform_chip_id.aon_chip_id1);
+
+	return wcn_chip_name;
+}
+EXPORT_SYMBOL_GPL(wcn_get_chip_name);
 
 void mdbg_hold_cpu(void)
 {

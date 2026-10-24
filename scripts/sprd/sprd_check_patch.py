@@ -122,10 +122,16 @@ def check_tags_commit_id(patch_info_list):
             print("Patch title:\n%s" % x)
             check_title_flag = 0
 
+            if "  " in x[x.index("Bug #"):]:
+                return (-1, "More than two consecutive spaces in the title")
             if "：" in x:
                 return (-1, "The patch title contains : of chinese")
             if ":" not in x:
                 return (-1, "The patch donot contains tag")
+            if not x[x.index('#') + 1:x.index(':')].replace(' ','').isalnum():
+                characters_temp_list = x[x.index('#') + 1:x.index(':')].split(' ')
+                if not (characters_temp_list[1] in SUBSYSTEM1_TAGS_NOCHECK and characters_temp_list[0].isalnum()):
+                    return (-1, "Title contains special characters between bug id and tags")
 
             if len(x.split(":")) != len(x.split(": ")):
                 return (-1, "expected ' ' after ':'")
@@ -140,7 +146,7 @@ def check_tags_commit_id(patch_info_list):
                 if tags_list[tags_list_start_num].strip(":") in ATTRIBUTE_TAGS[0:ATTRIBUTE_TAGS.index("FROMLIST") + 1]:
                     check_tags_flag = 0
                     check_commit_id_flag = 0
-                elif tags_list[tags_list_start_num].strip(":") in  ATTRIBUTE_TAGS[ATTRIBUTE_TAGS.index("SECURITY"):]:
+                elif tags_list[tags_list_start_num].strip(":") in ATTRIBUTE_TAGS[ATTRIBUTE_TAGS.index("PRIVATE"):]:
                     check_tags_flag = 1
                 else:
                     check_tags_flag = 0
@@ -151,7 +157,7 @@ def check_tags_commit_id(patch_info_list):
                 if tags_list_start_num < len(tags_list):
                     if tags_list[tags_list_start_num].strip(":") in SUBSYSTEM1_TAGS_NOCHECK:
                         ret_hit_tags_list.append(tags_list[tags_list_start_num].strip(":"))
-                   elif tags_list[tags_list_start_num].strip(":") in SUBSYSTEM1_TAGS:
+                    elif tags_list[tags_list_start_num].strip(":") in SUBSYSTEM1_TAGS:
                         ret_hit_tags_list.append(tags_list[tags_list_start_num].strip(":"))
                         tags_list_start_num += 1
                         if tags_list_start_num < len(tags_list):
@@ -223,7 +229,11 @@ def check_tags_file(modify_file_list, tags_list):
                             special_inconsistent_flag = 1
                             break
                         if special_tag in file_name_list_temp:
-                            special_inconsistent_flag = 1
+                            #针对sprd-configs文件做特殊处理，允许Documentation目录下sprd-configs文件和其他文件一起修改
+                            if special_inconsistent_flag == 0 and "sprd-configs" in file_name_list_temp:
+                                continue
+                            else:
+                                special_inconsistent_flag = 1
                             break
                     break
 
@@ -276,105 +286,3 @@ if __name__ == '__main__':
         else:
             print("\nINFO:Ignore check of tags and modified files!")
 
-#test code
-'''
-if __name__ == '__main__':
-    test_list = []
-    ret_info = []
-#test 1 tags
-    test_list = []
-    test_list.append("Bug #987917 sched: open eas,set schedtune and set default schedutil governor @samer.xie")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test 2 tags
-    test_list = []
-    test_list.append("e79b6a3eaac9 Bug #986255 spi: sprd: Add reset function for Sharkl3 platform @Bruce Chen")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test 3 tags
-    test_list = []
-    test_list.append("Bug #898471 soc: sprd: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test include tags
-    test_list = []
-    test_list.append("Bug #885833 include: power123: Add helper function to detect charger type @Baolin Wang")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test donot need check tags and commit id
-    test_list = []
-    test_list.append("Bug #898471 FROMLIST: soc: sprda: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test donot need check tags, need check commit id
-    test_list = []
-    test_list.append("Bug #898471 UPSTREAM: socs: sprd: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test donot need check commit id,need check tags
-    test_list = []
-    test_list.append("Bug #898471 SECURITY: soc: sprda: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test 1 tags error
-    test_list = []
-    test_list.append("Bug #898471 soca: sprd: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test 2 tags error
-    test_list = []
-    test_list.append("Bug #898471 soc: sprda: iommu: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test 3 tags error
-    test_list = []
-    test_list.append("Bug #898471 soc: sprd: iommua: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test BACKPORT, FROMLIST:
-    test_list = []
-    test_list.append("Bug #898471 BACKPORT, FROMLIST: soc: sprda: iommua: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-#test BACKPORT: FROMGIT:
-    test_list = []
-    test_list.append("Bug #898471 BACKPORT: FROMGIT: soc: sprda: iommua: bypass dcam/isp iommu for sharkl5 @sheng.xu")
-    ret_info = check_tags_commit_id(test_list)
-    if ret_info[0] != 0:
-        print "error code: %s, error info: %s" % (ret_info[0], ret_info[1])
-    else:
-        print "check OK: tags list: %s" % ret_info[1]
-'''
