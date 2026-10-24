@@ -1747,7 +1747,7 @@ fts_create_sysfs(client);
 		PRINT_ERR("Failed to create device file(%s)!\n", dev_attr_proximity.attr.name);
 	}
 
-	prx_wake_lock_ps = wakeup_source_register("prx_wake_lock");
+	prx_wake_lock_ps = wakeup_source_register(&client->dev, "prx_wake_lock");
 
 	//setup prox input device
 	proximity_input_dev = input_allocate_device();
