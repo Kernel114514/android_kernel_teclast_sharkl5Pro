@@ -19,12 +19,15 @@ struct sprd_iommu_init_data {
 	size_t pgt_size;             /* iommu page table array size */
 	unsigned long ctrl_reg;             /* iommu control register */
 	unsigned long fault_page;
+	unsigned long re_route_page;
 	unsigned int iommu_rev;
 
 	/*add for 9860 interlace ddr*/
 	/*iommu reserved memory of pf page table*/
 	unsigned long pagt_base_ddr;
 	unsigned long pagt_ddr_size;
+	/*for shakrl2/isharl2*/
+	unsigned int iommuex_rev;
 };
 
 #define SPRD_MAX_SG_CACHED_CNT 1024
@@ -79,14 +82,30 @@ struct sprd_iommu_sg_pool {
 struct sprd_iommu_dev {
 	struct sprd_iommu_init_data *init_data;
 	struct gen_pool *pool;
+	struct gen_pool *pf_ch_pool;
 	struct sprd_iommu_ops *ops;
+	struct clk *mmu_mclock;
+	struct clk *mmu_pclock;
+	struct clk *mmu_clock;
+	struct clk *mmu_axiclock;
+	atomic_t iommu_dev_cnt;
 
 	void *private;
 	unsigned int map_count;
+	unsigned int div2_frq;
+	bool light_sleep_en;
 	spinlock_t pgt_lock;
+	unsigned int status_count;
+	struct mutex status_mutex;
 
 	struct sprd_iommu_sg_pool sg_pool;
+	struct device *drv_dev;
+	unsigned long mmupf_iovaarray[SPRD_MAX_SG_CACHED_CNT];
+
+	enum sprd_iommu_chtype ch_type;
+	u32 channel_id;
 	int id;
+	int org_id;
 };
 
 /*map arguments for kernel space*/
@@ -111,6 +130,7 @@ struct sprd_iommu_unmap_data {
 
 struct sprd_iommu_list_data {
 	enum sprd_iommu_id iommu_id;
+	bool enabled;
 	struct sprd_iommu_dev *iommu_dev;
 };
 
@@ -128,6 +148,8 @@ int sprd_iommu_unmap(struct device *dev,
 int sprd_iommu_unmap_with_idx(struct device *dev,
 		struct sprd_iommu_unmap_data *data, int idx);
 int sprd_iommu_unmap_orphaned(struct sprd_iommu_unmap_data *data);
+int sprd_iommu_suspend(struct device *dev);
+int sprd_iommu_resume(struct device *dev);
 int sprd_iommu_restore(struct device *dev);
 int sprd_iommu_set_cam_bypass(bool vaor_bp_en);
 #else
@@ -158,6 +180,16 @@ static inline int sprd_iommu_unmap_orphaned(struct sprd_iommu_unmap_data *data)
 	return -ENODEV;
 }
 
+static inline int sprd_iommu_suspend(struct device *dev)
+{
+	return -ENODEV;
+}
+
+static inline int sprd_iommu_resume(struct device *dev)
+{
+	return -ENODEV;
+}
+
 static inline int sprd_iommu_restore(struct device *dev)
 {
 	return -ENODEV;
@@ -180,6 +212,8 @@ struct sprd_iommu_ops {
 	void (*open)(struct sprd_iommu_dev *dev);
 	void (*release)(struct sprd_iommu_dev *dev);
 	void (*pgt_show)(struct sprd_iommu_dev *dev);
+	int (*suspend)(struct sprd_iommu_dev *dev);
+	int (*resume)(struct sprd_iommu_dev *dev);
 	int (*iova_unmap_orphaned)(struct sprd_iommu_dev *dev, unsigned long iova, size_t iova_length);
 };
 
