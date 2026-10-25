@@ -1410,7 +1410,40 @@ struct vbc_codec_priv {
 	int32_t ivs_smtpa_ctl_enable;
 	int32_t is_use_ivs_smtpa;
 	u32 iis_mst_width;
+	bool tx_wd_synced[VBC_MUX_IIS_TX_ID_MAX];
+	bool rx_wd_synced[VBC_MUX_IIS_RX_ID_MAX];
+	bool tx_lr_mod_synced[VBC_MUX_IIS_TX_ID_MAX];
+	bool rx_lr_mod_synced[VBC_MUX_IIS_RX_ID_MAX];
+	bool mux_iis_tx_synced[VBC_MUX_IIS_TX_ID_MAX];
+	bool mux_iis_rx_synced[VBC_MUX_IIS_RX_ID_MAX];
+	bool mux_iis_port_do_synced[VBC_IIS_PORT_ID_MAX];
+	bool mux_adc_source_synced[VBC_MUX_ADC_SOURCE_MAX];
+	bool mux_dac_out_synced[VBC_MUX_DAC_OUT_MAX];
+	bool mux_adc_in_synced[VBC_MUX_IN_ADC_ID_MAX];
+	bool mux_fm_synced[VBC_FM_MUX_ID_MAX];
+	bool mux_st_synced[VBC_ST_MUX_ID_MAX];
+	bool mux_loop_da0_synced[VBC_MUX_LOOP_DAC0_MAX];
+	bool mux_loop_da1_synced[VBC_MUX_LOOP_DAC1_MAX];
+	bool mux_loop_da0_da1_synced[VBC_MUX_LOOP_DAC0_DAC1_MAX];
+	bool mux_audrcd_synced[VBC_MUX_AUDRCD_ID_MAX];
+	bool mux_tdm_audrcd23_synced[VBC_MUX_TDM_AUDRCD23_MAX];
+	bool mux_ap01_dsp_synced[VBC_MUX_AP01_DSP_ID_MAX];
+	bool mixer_synced[VBC_MIXER_MAX];
+	bool adder_synced[VBC_ADDER_MAX];
+	bool dg_synced[VBC_DG_MAX];
+	bool mdg_synced[VBC_MDG_MAX];
+	bool dp_en_synced[VBC_DP_EN_MAX];
+	bool src_fs_synced[VBC_SRC_MAX];
+	bool smthdg_synced[VBC_SMTHDG_MAX];
+	bool smthdg_step_synced[VBC_SMTHDG_MAX];
+	bool mixerdg_main_synced[VBC_MIXERDG_MAX];
+	bool mixerdg_mix_synced[VBC_MIXERDG_MAX];
+	bool mixerdg_step_synced;
+	bool profile_synced[SND_VBC_PROFILE_MAX];
+	bool volume_synced;
 };
+
+void vbc_codec_invalidate_cache(void);
 
 /********************************************************************
  * ap phy define interface

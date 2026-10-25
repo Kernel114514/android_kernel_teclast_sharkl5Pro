@@ -522,6 +522,7 @@ static int vbc_normal_resume(void)
 
 	pm_vbc = aud_pm_vbc_get();
 	restore_access();
+	vbc_codec_invalidate_cache();
 	pr_info("%s resumed\n", __func__);
 
 	return 0;

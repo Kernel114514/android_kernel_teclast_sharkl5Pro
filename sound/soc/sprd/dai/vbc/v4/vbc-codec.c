@@ -52,7 +52,47 @@
 	SOC_ENUM_SINGLE(xreg, 0, xmax, xtexts)
 
 #undef sp_asoc_pr_dbg
-#define sp_asoc_pr_dbg pr_info
+#define sp_asoc_pr_dbg pr_debug
+
+static struct vbc_codec_priv *s_vbc_codec;
+
+void vbc_codec_invalidate_cache(void)
+{
+	if (!s_vbc_codec)
+		return;
+	memset(s_vbc_codec->tx_wd_synced, 0, sizeof(s_vbc_codec->tx_wd_synced));
+	memset(s_vbc_codec->rx_wd_synced, 0, sizeof(s_vbc_codec->rx_wd_synced));
+	memset(s_vbc_codec->tx_lr_mod_synced, 0, sizeof(s_vbc_codec->tx_lr_mod_synced));
+	memset(s_vbc_codec->rx_lr_mod_synced, 0, sizeof(s_vbc_codec->rx_lr_mod_synced));
+	memset(s_vbc_codec->mux_iis_tx_synced, 0, sizeof(s_vbc_codec->mux_iis_tx_synced));
+	memset(s_vbc_codec->mux_iis_rx_synced, 0, sizeof(s_vbc_codec->mux_iis_rx_synced));
+	memset(s_vbc_codec->mux_iis_port_do_synced, 0, sizeof(s_vbc_codec->mux_iis_port_do_synced));
+	memset(s_vbc_codec->mux_adc_source_synced, 0, sizeof(s_vbc_codec->mux_adc_source_synced));
+	memset(s_vbc_codec->mux_dac_out_synced, 0, sizeof(s_vbc_codec->mux_dac_out_synced));
+	memset(s_vbc_codec->mux_adc_in_synced, 0, sizeof(s_vbc_codec->mux_adc_in_synced));
+	memset(s_vbc_codec->mux_fm_synced, 0, sizeof(s_vbc_codec->mux_fm_synced));
+	memset(s_vbc_codec->mux_st_synced, 0, sizeof(s_vbc_codec->mux_st_synced));
+	memset(s_vbc_codec->mux_loop_da0_synced, 0, sizeof(s_vbc_codec->mux_loop_da0_synced));
+	memset(s_vbc_codec->mux_loop_da1_synced, 0, sizeof(s_vbc_codec->mux_loop_da1_synced));
+	memset(s_vbc_codec->mux_loop_da0_da1_synced, 0, sizeof(s_vbc_codec->mux_loop_da0_da1_synced));
+	memset(s_vbc_codec->mux_audrcd_synced, 0, sizeof(s_vbc_codec->mux_audrcd_synced));
+	memset(s_vbc_codec->mux_tdm_audrcd23_synced, 0, sizeof(s_vbc_codec->mux_tdm_audrcd23_synced));
+	memset(s_vbc_codec->mux_ap01_dsp_synced, 0, sizeof(s_vbc_codec->mux_ap01_dsp_synced));
+	memset(s_vbc_codec->mixer_synced, 0, sizeof(s_vbc_codec->mixer_synced));
+	memset(s_vbc_codec->adder_synced, 0, sizeof(s_vbc_codec->adder_synced));
+	memset(s_vbc_codec->dg_synced, 0, sizeof(s_vbc_codec->dg_synced));
+	memset(s_vbc_codec->mdg_synced, 0, sizeof(s_vbc_codec->mdg_synced));
+	memset(s_vbc_codec->dp_en_synced, 0, sizeof(s_vbc_codec->dp_en_synced));
+	memset(s_vbc_codec->src_fs_synced, 0, sizeof(s_vbc_codec->src_fs_synced));
+	memset(s_vbc_codec->smthdg_synced, 0, sizeof(s_vbc_codec->smthdg_synced));
+	memset(s_vbc_codec->smthdg_step_synced, 0, sizeof(s_vbc_codec->smthdg_step_synced));
+	memset(s_vbc_codec->mixerdg_main_synced, 0, sizeof(s_vbc_codec->mixerdg_main_synced));
+	memset(s_vbc_codec->mixerdg_mix_synced, 0, sizeof(s_vbc_codec->mixerdg_mix_synced));
+	s_vbc_codec->mixerdg_step_synced = false;
+	memset(s_vbc_codec->profile_synced, 0, sizeof(s_vbc_codec->profile_synced));
+	s_vbc_codec->volume_synced = false;
+	pr_info("%s: VBC codec cache invalidated\n", __func__);
+}
 
 static const char * const dsp_loopback_type_txt[] = {
 	/* type 0, type 1, type 2 */
@@ -140,11 +180,17 @@ static int vbc_mdg_put(struct snd_kcontrol *kcontrol,
 	val1 = ucontrol->value.integer.value[0];
 	val2 = ucontrol->value.integer.value[1];
 
+	if (vbc_codec->mdg_synced[id] &&
+	    vbc_codec->mdg[id].mdg_mute == val1 &&
+	    vbc_codec->mdg[id].mdg_step == val2)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s mute:%02d, step:%02d\n",
 		       __func__, vbc_mdg_id2name(id), val1, val2);
 	vbc_codec->mdg[id].mdg_id = id;
 	vbc_codec->mdg[id].mdg_mute = val1;
 	vbc_codec->mdg[id].mdg_step = val2;
+	vbc_codec->mdg_synced[id] = true;
 	dsp_vbc_mdg_set(id, val1, val2);
 
 	return 0;
@@ -203,9 +249,14 @@ static int vbc_src_put(struct snd_kcontrol *kcontrol,
 	int id = mc->shift;
 
 	val1 = ucontrol->value.integer.value[0];
+	if (vbc_codec->src_fs_synced[id] &&
+	    vbc_codec->src_fs[id] == val1)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s, src_fs=%d\n", __func__,
 		       vbc_src_id2name(id), val1);
 	vbc_codec->src_fs[id] = val1;
+	vbc_codec->src_fs_synced[id] = true;
 	dsp_vbc_src_set(id, val1);
 
 	return 0;
@@ -268,9 +319,15 @@ static int vbc_dg_put(struct snd_kcontrol *kcontrol,
 	    (val1 > OFFLOAD_DG_MAX || val2 > OFFLOAD_DG_MAX))
 		return -EINVAL;
 
+	if (vbc_codec->dg_synced[id] &&
+	    vbc_codec->dg[id].dg_left == val1 &&
+	    vbc_codec->dg[id].dg_right == val2)
+		return 0;
+
 	vbc_codec->dg[id].dg_id = id;
 	vbc_codec->dg[id].dg_left = val1;
 	vbc_codec->dg[id].dg_right = val2;
+	vbc_codec->dg_synced[id] = true;
 
 	dsp_vbc_dg_set(id, val1, val2);
 	sp_asoc_pr_dbg("%s %s l:%02d r:%02d\n",
@@ -326,11 +383,18 @@ static int vbc_smthdg_put(struct snd_kcontrol *kcontrol,
 
 	val1 = ucontrol->value.integer.value[0];
 	val2 = ucontrol->value.integer.value[1];
+
+	if (vbc_codec->smthdg_synced[id] &&
+	    vbc_codec->smthdg[id].smthdg_left == val1 &&
+	    vbc_codec->smthdg[id].smthdg_right == val2)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s l:%02d, r:%02d\n",
 		       __func__, vbc_smthdg_id2name(id), val1, val2);
 	vbc_codec->smthdg[id].smthdg_id = id;
 	vbc_codec->smthdg[id].smthdg_left = val1;
 	vbc_codec->smthdg[id].smthdg_right = val2;
+	vbc_codec->smthdg_synced[id] = true;
 
 	dsp_vbc_smthdg_set(id, val1, val2);
 
@@ -362,10 +426,16 @@ static int vbc_smthdg_step_put(struct snd_kcontrol *kcontrol,
 	int id = mc->shift;
 
 	val = ucontrol->value.integer.value[0];
+
+	if (vbc_codec->smthdg_step_synced[id] &&
+	    vbc_codec->smthdg_step[id].step == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s %02d\n",
 		       __func__, vbc_smthdg_id2name(id), val);
 	vbc_codec->smthdg_step[id].smthdg_id = id;
 	vbc_codec->smthdg_step[id].step = val;
+	vbc_codec->smthdg_step_synced[id] = true;
 	dsp_vbc_smthdg_step_set(id, val);
 
 	return 0;
@@ -420,11 +490,18 @@ static int vbc_mixerdg_mainpath_put(struct snd_kcontrol *kcontrol,
 
 	val1 = ucontrol->value.integer.value[0];
 	val2 = ucontrol->value.integer.value[1];
+
+	if (vbc_codec->mixerdg_main_synced[id] &&
+	    vbc_codec->mixerdg[id].main_path.mixerdg_main_left == val1 &&
+	    vbc_codec->mixerdg[id].main_path.mixerdg_main_right == val2)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s: main_path l:%02d, r:%02d\n",
 		       __func__, vbc_mixerdg_id2name(id), val1, val2);
 	vbc_codec->mixerdg[id].main_path.mixerdg_id = id;
 	vbc_codec->mixerdg[id].main_path.mixerdg_main_left = val1;
 	vbc_codec->mixerdg[id].main_path.mixerdg_main_right = val2;
+	vbc_codec->mixerdg_main_synced[id] = true;
 	dsp_vbc_mixerdg_mainpath_set(id, val1, val2);
 
 	return 0;
@@ -459,11 +536,18 @@ static int vbc_mixerdg_mixpath_put(struct snd_kcontrol *kcontrol,
 
 	val1 = ucontrol->value.integer.value[0];
 	val2 = ucontrol->value.integer.value[1];
+
+	if (vbc_codec->mixerdg_mix_synced[id] &&
+	    vbc_codec->mixerdg[id].mix_path.mixerdg_mix_left == val1 &&
+	    vbc_codec->mixerdg[id].mix_path.mixerdg_mix_right == val2)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s: mix_paht l:%02d, r:%02d\n",
 		       __func__, vbc_mixerdg_id2name(id), val1, val2);
 	vbc_codec->mixerdg[id].mix_path.mixerdg_id = id;
 	vbc_codec->mixerdg[id].mix_path.mixerdg_mix_left = val1;
 	vbc_codec->mixerdg[id].mix_path.mixerdg_mix_right = val2;
+	vbc_codec->mixerdg_mix_synced[id] = true;
 	dsp_vbc_mixerdg_mixpath_set(id, val1, val2);
 
 	return 0;
@@ -488,8 +572,14 @@ static int vbc_mixerdg_step_put(struct snd_kcontrol *kcontrol,
 	struct vbc_codec_priv *vbc_codec = snd_soc_codec_get_drvdata(codec);
 
 	val = ucontrol->value.integer.value[0];
+
+	if (vbc_codec->mixerdg_step_synced &&
+	    vbc_codec->mixerdg_step == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s set %02d\n", __func__, val);
 	vbc_codec->mixerdg_step = val;
+	vbc_codec->mixerdg_step_synced = true;
 	dsp_vbc_mixerdg_step_set(val);
 
 	return 0;
@@ -566,11 +656,16 @@ static int vbc_put_mixer_ops(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 
+	if (vbc_codec->mixer_synced[id] &&
+	    vbc_codec->mixer[id].type == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s -> %s\n", __func__,
 		       vbc_mixer_id2name(id), texts->texts[val]);
 
 	vbc_codec->mixer[id].mixer_id = id;
 	vbc_codec->mixer[id].type = val;
+	vbc_codec->mixer_synced[id] = true;
 	dsp_vbc_mixer_set(id, vbc_codec->mixer[id].type);
 
 	return 0;
@@ -658,10 +753,15 @@ static int vbc_mux_adc_source_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_adc_source_synced[id] &&
+	    vbc_codec->mux_adc_source[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		__func__, vbc_mux_adc_source_id2name(id), texts->texts[val]);
 	vbc_codec->mux_adc_source[id].id = id;
 	vbc_codec->mux_adc_source[id].val = val;
+	vbc_codec->mux_adc_source_synced[id] = true;
 
 	dsp_vbc_mux_adc_source_set(id, val);
 
@@ -729,10 +829,15 @@ static int vbc_mux_dac_out_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_dac_out_synced[id] &&
+	    vbc_codec->mux_dac_out[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		__func__, vbc_mux_dac_out_id2name(id), texts->texts[val]);
 	vbc_codec->mux_dac_out[id].id = id;
 	vbc_codec->mux_dac_out[id].val = val;
+	vbc_codec->mux_dac_out_synced[id] = true;
 	dsp_vbc_mux_dac_out_set(id, val);
 
 	return 1;
@@ -811,10 +916,15 @@ static int vbc_mux_adc_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_adc_in_synced[id] &&
+	    vbc_codec->mux_adc_in[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		       __func__, vbc_mux_adc_id2name(id), texts->texts[val]);
 	vbc_codec->mux_adc_in[id].id = id;
 	vbc_codec->mux_adc_in[id].val = val;
+	vbc_codec->mux_adc_in_synced[id] = true;
 	dsp_vbc_mux_adc_set(id, val);
 
 	return 1;
@@ -1444,10 +1554,15 @@ static int vbc_mux_iis_tx_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_iis_tx_synced[id] &&
+	    vbc_codec->mux_iis_tx[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		       __func__, vbc_mux_iis_tx_id2name(id), texts->texts[val]);
 	vbc_codec->mux_iis_tx[id].id = id;
 	vbc_codec->mux_iis_tx[id].val = val;
+	vbc_codec->mux_iis_tx_synced[id] = true;
 	dsp_vbc_mux_iis_tx_set(id, val);
 
 	return 1;
@@ -1515,10 +1630,15 @@ static int vbc_mux_iis_rx_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_iis_rx_synced[id] &&
+	    vbc_codec->mux_iis_rx[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		       __func__, vbc_mux_iis_rx_id2name(id), texts->texts[val]);
 	vbc_codec->mux_iis_rx[id].id = id;
 	vbc_codec->mux_iis_rx[id].val = val;
+	vbc_codec->mux_iis_rx_synced[id] = true;
 	dsp_vbc_mux_iis_rx_set(id, val);
 
 	return 1;
@@ -1595,10 +1715,15 @@ static int vbc_mux_iis_port_do_put(struct snd_kcontrol *kcontrol,
 		pr_err("ERR: %s,index outof bounds error\n", __func__);
 		return -EINVAL;
 	}
+	if (vbc_codec->mux_iis_port_do_synced[id] &&
+	    vbc_codec->mux_iis_port_do[id].val == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s to %s\n",
 		__func__, vbc_mux_iis_port_id2name(id), texts->texts[val]);
 	vbc_codec->mux_iis_port_do[id].id = id;
 	vbc_codec->mux_iis_port_do[id].val = val;
+	vbc_codec->mux_iis_port_do_synced[id] = true;
 	dsp_vbc_mux_iis_port_do_set(id, val);
 
 	return 1;
@@ -1670,11 +1795,17 @@ static int vbc_adder_put(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	val = ucontrol->value.integer.value[0];
+	if (vbc_codec->adder_synced[id] &&
+	    vbc_codec->vbc_adder[id].adder_mode_l == val &&
+	    vbc_codec->vbc_adder[id].adder_mode_r == val)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s to %s\n",
 		       __func__, vbc_adder_id2name(id), texts->texts[val]);
 	vbc_codec->vbc_adder[id].adder_id = id;
 	vbc_codec->vbc_adder[id].adder_mode_l = val;
 	vbc_codec->vbc_adder[id].adder_mode_r = val;
+	vbc_codec->adder_synced[id] = true;
 	dsp_vbc_adder_set(id, val, val);
 
 	return 1;
@@ -1752,10 +1883,15 @@ static int vbc_dp_en_put(struct snd_kcontrol *kcontrol,
 	}
 
 	value = ucontrol->value.enumerated.item[0];
+	if (vbc_codec->dp_en_synced[id] &&
+	    vbc_codec->vbc_dp_en[id].enable == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s = %s\n",
 		       __func__, vbc_datapath_id2name(id), texts->texts[value]);
 	vbc_codec->vbc_dp_en[id].id = id;
 	vbc_codec->vbc_dp_en[id].enable = value;
+	vbc_codec->dp_en_synced[id] = true;
 	dsp_vbc_dp_en_set(id, value);
 
 	return 1;
@@ -1853,10 +1989,15 @@ static int vbc_put_iis_tx_width_sel(struct snd_kcontrol *kcontrol,
 	}
 
 	value = ucontrol->value.enumerated.item[0];
+	if (vbc_codec->tx_wd_synced[id] &&
+	    vbc_codec->iis_tx_wd[id].value == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s=%s\n",
 		__func__, vbc_mux_iis_tx_id2name(id), texts->texts[value]);
 	vbc_codec->iis_tx_wd[id].id = id;
 	vbc_codec->iis_tx_wd[id].value = value;
+	vbc_codec->tx_wd_synced[id] = true;
 	dsp_vbc_iis_tx_width_set(id, value);
 
 	return 1;
@@ -1902,10 +2043,15 @@ static int vbc_put_iis_tx_lr_mod_sel(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	value = ucontrol->value.enumerated.item[0];
+	if (vbc_codec->tx_lr_mod_synced[id] &&
+	    vbc_codec->iis_tx_lr_mod[id].value == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s = %s\n",
 		__func__, vbc_mux_iis_tx_id2name(id), texts->texts[value]);
 	vbc_codec->iis_tx_lr_mod[id].id = id;
 	vbc_codec->iis_tx_lr_mod[id].value = value;
+	vbc_codec->tx_lr_mod_synced[id] = true;
 	dsp_vbc_iis_tx_lr_mod_set(id, value);
 
 	return 1;
@@ -1948,10 +2094,15 @@ static int vbc_put_iis_rx_width_sel(struct snd_kcontrol *kcontrol,
 	}
 
 	value = ucontrol->value.enumerated.item[0];
+	if (vbc_codec->rx_wd_synced[id] &&
+	    vbc_codec->iis_rx_wd[id].value == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s=%s\n",
 		__func__, vbc_mux_iis_rx_id2name(id), texts->texts[value]);
 	vbc_codec->iis_rx_wd[id].id = id;
 	vbc_codec->iis_rx_wd[id].value = value;
+	vbc_codec->rx_wd_synced[id] = true;
 	dsp_vbc_iis_rx_width_set(id, value);
 
 	return 1;
@@ -1993,10 +2144,15 @@ static int vbc_put_iis_rx_lr_mod_sel(struct snd_kcontrol *kcontrol,
 		return -EINVAL;
 	}
 	value = ucontrol->value.enumerated.item[0];
+	if (vbc_codec->rx_lr_mod_synced[id] &&
+	    vbc_codec->iis_rx_lr_mod[id].value == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s, %s = %s\n",
 		__func__, vbc_mux_iis_rx_id2name(id), texts->texts[value]);
 	vbc_codec->iis_rx_lr_mod[id].id = id;
 	vbc_codec->iis_rx_lr_mod[id].value = value;
+	vbc_codec->rx_lr_mod_synced[id] = true;
 	dsp_vbc_iis_rx_lr_mod_set(id, value);
 
 	return 1;
@@ -2379,6 +2535,7 @@ int vbc_profile_loading(struct snd_soc_codec *codec, int profile_id)
 		       (unsigned long)p_profile_setting->data[profile_id],
 		       (unsigned long)
 		       virt_to_phys(p_profile_setting->data[profile_id]));
+	vbc_codec->profile_synced[profile_id] = false;
 	ret = 0;
 	goto profile_out;
 
@@ -2425,6 +2582,11 @@ static int vbc_profile_put(struct snd_kcontrol *kcontrol,
 
 	ret = ucontrol->value.integer.value[0];
 	current_offset = ((ret >> 24) & 0xff);
+
+	if (vbc_codec->profile_synced[profile_idx] &&
+	    p_profile_setting->now_mode[profile_idx] == ret)
+		return 0;
+
 	sp_asoc_pr_dbg("%s %s, value=%#x,",
 		       __func__, vbc_get_profile_name(profile_idx), ret);
 	sp_asoc_pr_dbg(" current_offset=%d, mode_max_offset=%d\n",
@@ -2440,8 +2602,10 @@ static int vbc_profile_put(struct snd_kcontrol *kcontrol,
 	if (current_offset < mode_max_offset)
 		p_profile_setting->now_mode[profile_idx] = ret;
 
-	if (p_profile_setting->data[profile_idx])
+	if (p_profile_setting->data[profile_idx]) {
 		vbc_profile_try_apply(codec, profile_idx);
+		vbc_codec->profile_synced[profile_idx] = true;
+	}
 
 	return ret;
 }
@@ -2501,9 +2665,13 @@ static int vbc_volume_put(struct snd_kcontrol *kcontrol,
 	struct vbc_codec_priv *vbc_codec = snd_soc_codec_get_drvdata(codec);
 
 	value = ucontrol->value.integer.value[0];
+	if (vbc_codec->volume_synced && vbc_codec->volume == value)
+		return 0;
+
 	sp_asoc_pr_dbg("%s volume = %d\n",
 		       __func__, value);
 	vbc_codec->volume = value;
+	vbc_codec->volume_synced = true;
 	dsp_vbc_set_volume(vbc_codec->volume);
 
 	return value;
@@ -3850,6 +4018,7 @@ int sprd_vbc_codec_probe(struct platform_device *pdev)
 		of_property_read_bool(np, "sprd,need-aud-top-clk");
 	mutex_init(&vbc_codec->load_mutex);
 	mutex_init(&vbc_codec->agcp_access_mutex);
+	s_vbc_codec = vbc_codec;
 
 	return 0;
 }
@@ -3858,6 +4027,7 @@ int sprd_vbc_codec_remove(struct platform_device *pdev)
 {
 	struct vbc_codec_priv *vbc_codec = platform_get_drvdata(pdev);
 
+	s_vbc_codec = NULL;
 	vbc_codec->vbc_profile_setting.dev = 0;
 
 	snd_soc_unregister_codec(&pdev->dev);

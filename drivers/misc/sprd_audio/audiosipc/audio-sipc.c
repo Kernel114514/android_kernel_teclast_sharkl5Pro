@@ -40,8 +40,8 @@
 #include "audio-sipc.h"
 #include "sprd-string.h"
 
-#define sp_asoc_pr_dbg pr_info
-#define sp_asoc_pr_info pr_info
+#define sp_asoc_pr_dbg pr_debug
+#define sp_asoc_pr_info pr_debug
 
 #define AUDIO_SMSG_RINGHDR_EXT_SIZE	(16)
 #define AUDIO_SMSG_RINGHDR_EXT_TXRDPTR	(0)
@@ -563,7 +563,7 @@ int aud_send_cmd_no_wait(u16 channel, u32 cmd,
 {
 	int ret;
 
-	pr_info("%s no wait\n", __func__);
+	pr_debug("%s no wait\n", __func__);
 	ret = aud_send_msg(channel, cmd,
 			   value0, value1, value2, value3);
 	if (ret < 0) {
@@ -610,7 +610,7 @@ int aud_send_cmd_no_param(u16 channel, u32 cmd,
 		       __func__, channel, cmd, ret);
 		goto err;
 	}
-	pr_info(
+	pr_debug(
 		"%s out,channel = %d cmd =%d ret-value:%d,repeat_count=%d\n",
 		__func__, channel, cmd, value.parameter3, repeat_count);
 
@@ -667,7 +667,7 @@ int aud_send_cmd(u16 channel, int id, int stream,
 		       __func__, cmd, ret);
 		goto err;
 	}
-	pr_info("%s %d wait dsp\n", __func__, __LINE__);
+	pr_debug("%s %d wait dsp\n", __func__, __LINE__);
 	do {
 		ret = aud_recv_cmd(channel, cmd, &value, CMD_SEND_TIMEOUT);
 		repeat_count++;

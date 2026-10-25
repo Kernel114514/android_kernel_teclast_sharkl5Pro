@@ -481,7 +481,7 @@ int agdsp_access_enable(void)
 
 	AGCP_WRITEL(AGCP_READL(&dsp_ac->state->ap_enable_cnt) + 1,
 		&dsp_ac->state->ap_enable_cnt);
-	pr_info("%s out\n", __func__);
+	pr_debug("%s out\n", __func__);
 
 exit:
 	spin_unlock(&dsp_ac->spin_lock);
