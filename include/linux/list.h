@@ -161,6 +161,21 @@ static inline void list_del_init(struct list_head *entry)
 }
 
 /**
+ * __list_del_clearprev - deletes entry from list and clears the prev pointer
+ * @entry: the element to delete from the list.
+ *
+ * This is a special-purpose list clearing method used in the networking code
+ * for lists allocated as per-cpu, where we don't want to incur the extra
+ * WRITE_ONCE() overhead of a regular list_del_init(). The code that uses this
+ * needs to check the node 'prev' pointer instead of calling list_empty().
+ */
+static inline void __list_del_clearprev(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+	entry->prev = NULL;
+}
+
+/**
  * list_move - delete from one list and add as another's head
  * @list: the entry to move
  * @head: the head that will precede our entry
@@ -664,6 +679,11 @@ static inline void INIT_HLIST_NODE(struct hlist_node *h)
 static inline int hlist_unhashed(const struct hlist_node *h)
 {
 	return !h->pprev;
+}
+
+static inline int hlist_unhashed_lockless(const struct hlist_node *h)
+{
+	return !READ_ONCE(h->pprev);
 }
 
 static inline int hlist_empty(const struct hlist_head *h)

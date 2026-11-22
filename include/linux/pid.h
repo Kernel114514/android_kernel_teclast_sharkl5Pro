@@ -14,6 +14,7 @@ enum pid_type
 	/* only valid to __task_pid_nr_ns() */
 	__PIDTYPE_TGID
 };
+#define PIDTYPE_TGID __PIDTYPE_TGID
 
 /*
  * What is struct pid?

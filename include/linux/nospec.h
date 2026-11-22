@@ -65,4 +65,8 @@ int arch_prctl_spec_ctrl_set(struct task_struct *task, unsigned long which,
 /* Speculation control for seccomp enforced mitigation */
 void arch_seccomp_spec_mitigate(struct task_struct *task);
 
+#ifndef barrier_nospec
+# define barrier_nospec() do { } while (0)
+#endif
+
 #endif /* _LINUX_NOSPEC_H */

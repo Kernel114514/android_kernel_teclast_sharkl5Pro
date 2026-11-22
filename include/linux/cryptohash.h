@@ -8,7 +8,21 @@
 #define SHA_MESSAGE_BYTES (512 /*bits*/ / 8)
 #define SHA_WORKSPACE_WORDS 16
 
+#define SHA1_DIGEST_WORDS 5
+#define SHA1_BLOCK_SIZE 64
+#define SHA1_WORKSPACE_WORDS 16
+
 void sha_init(__u32 *buf);
 void sha_transform(__u32 *digest, const char *data, __u32 *W);
+
+static inline void sha1_init(__u32 *buf)
+{
+	sha_init(buf);
+}
+
+static inline void sha1_transform(__u32 *digest, const char *data, __u32 *W)
+{
+	sha_transform(digest, data, W);
+}
 
 #endif

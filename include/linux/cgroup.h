@@ -300,6 +300,12 @@ void css_task_iter_end(struct css_task_iter *it);
  * Inline functions.
  */
 
+static inline u64 cgroup_id(struct cgroup *cgrp)
+{
+	return cgrp->kn->id.id;
+}
+
+
 /**
  * css_get - obtain a reference on the specified css
  * @css: target css
@@ -547,6 +553,26 @@ static inline struct cgroup *cgroup_parent(struct cgroup *cgrp)
 	return NULL;
 }
 
+static inline struct cgroup *cgroup_ancestor(struct cgroup *cgrp,
+					     int ancestor_level)
+{
+	struct cgroup *ptr;
+
+	if (cgrp->level < ancestor_level)
+		return NULL;
+
+	for (ptr = cgrp;
+	     ptr && ptr->level > ancestor_level;
+	     ptr = cgroup_parent(ptr))
+		;
+
+	if (ptr && ptr->level == ancestor_level)
+		return ptr;
+
+	return NULL;
+}
+
+
 /**
  * cgroup_is_descendant - test ancestry
  * @cgrp: the cgroup to be tested
@@ -692,6 +718,7 @@ static inline int cgroup_init_early(void) { return 0; }
 static inline int cgroup_init(void) { return 0; }
 static inline void cgroup_init_kthreadd(void) {}
 static inline void cgroup_kthread_ready(void) {}
+static inline u64 cgroup_id(struct cgroup *cgrp) { return 1; }
 static inline union kernfs_node_id *cgroup_get_kernfs_id(struct cgroup *cgrp)
 {
 	return NULL;
@@ -802,5 +829,23 @@ static inline void put_cgroup_ns(struct cgroup_namespace *ns)
 	if (ns && refcount_dec_and_test(&ns->count))
 		free_cgroup_ns(ns);
 }
+
+#ifdef CONFIG_CGROUP_BPF
+static inline void cgroup_bpf_get(struct cgroup *cgrp)
+{
+	percpu_ref_get(&cgrp->bpf.refcnt);
+}
+
+static inline void cgroup_bpf_put(struct cgroup *cgrp)
+{
+	percpu_ref_put(&cgrp->bpf.refcnt);
+}
+
+#else /* CONFIG_CGROUP_BPF */
+
+static inline void cgroup_bpf_get(struct cgroup *cgrp) {}
+static inline void cgroup_bpf_put(struct cgroup *cgrp) {}
+
+#endif /* CONFIG_CGROUP_BPF */
 
 #endif /* _LINUX_CGROUP_H */

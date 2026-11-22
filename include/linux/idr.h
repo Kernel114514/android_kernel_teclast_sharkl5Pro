@@ -255,6 +255,17 @@ int ida_simple_get(struct ida *ida, unsigned int start, unsigned int end,
 		   gfp_t gfp_mask);
 void ida_simple_remove(struct ida *ida, unsigned int id);
 
+static inline int ida_alloc(struct ida *ida, gfp_t gfp)
+{
+	return ida_simple_get(ida, 0, 0, gfp);
+}
+
+static inline void ida_free(struct ida *ida, unsigned int id)
+{
+	ida_simple_remove(ida, id);
+}
+
+
 static inline void ida_init(struct ida *ida)
 {
 	INIT_RADIX_TREE(&ida->ida_rt, IDR_RT_MARKER | GFP_NOWAIT);

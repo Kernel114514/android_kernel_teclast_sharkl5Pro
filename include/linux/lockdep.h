@@ -368,6 +368,15 @@ extern asmlinkage void lockdep_sys_exit(void);
 extern void lockdep_off(void);
 extern void lockdep_on(void);
 
+static inline void lockdep_register_key(struct lock_class_key *key)
+{
+}
+
+static inline void lockdep_unregister_key(struct lock_class_key *key)
+{
+	lockdep_free_key_range(key, sizeof(*key));
+}
+
 /*
  * These methods are used by specific locking variants (spinlocks,
  * rwlocks, mutexes and rwsems) to pass init/acquire/release events
@@ -528,8 +537,17 @@ static inline void lockdep_on(void)
  */
 struct lock_class_key { };
 
+static inline void lockdep_register_key(struct lock_class_key *key)
+{
+}
+
+static inline void lockdep_unregister_key(struct lock_class_key *key)
+{
+}
+
 #define lockdep_depth(tsk)	(0)
 
+#define lockdep_is_held(l)			(1)
 #define lockdep_is_held_type(l, r)		(1)
 
 #define lockdep_assert_held(l)			do { (void)(l); } while (0)

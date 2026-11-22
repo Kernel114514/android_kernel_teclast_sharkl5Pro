@@ -22,6 +22,10 @@ extern void save_stack_trace_tsk(struct task_struct *tsk,
 extern int save_stack_trace_tsk_reliable(struct task_struct *tsk,
 					 struct stack_trace *trace);
 
+unsigned int stack_trace_save_tsk(struct task_struct *task,
+				  unsigned long *store, unsigned int size,
+				  unsigned int skipnr);
+
 extern void print_stack_trace(struct stack_trace *trace, int spaces);
 extern int snprint_stack_trace(char *buf, size_t size,
 			struct stack_trace *trace, int spaces);
@@ -39,6 +43,12 @@ extern void save_stack_trace_user(struct stack_trace *trace);
 # define print_stack_trace(trace, spaces)		do { } while (0)
 # define snprint_stack_trace(buf, size, trace, spaces)	do { } while (0)
 # define save_stack_trace_tsk_reliable(tsk, trace)	({ -ENOSYS; })
+static inline unsigned int stack_trace_save_tsk(struct task_struct *task,
+						unsigned long *store, unsigned int size,
+						unsigned int skipnr)
+{
+	return 0;
+}
 #endif /* CONFIG_STACKTRACE */
 
 #endif /* __LINUX_STACKTRACE_H */

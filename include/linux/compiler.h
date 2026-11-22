@@ -113,6 +113,15 @@ void ftrace_likely_update(struct ftrace_likely_data *f, int val,
 #else
 #define annotate_reachable()
 #define annotate_unreachable()
+#define __annotate_jump_table
+#endif
+
+#ifndef __annotate_jump_table
+#define __annotate_jump_table
+#endif
+
+#ifndef absolute_pointer
+#define absolute_pointer(val)	RELOC_HIDE((void *)(val), 0)
 #endif
 
 #ifndef ASM_UNREACHABLE
