@@ -59,9 +59,14 @@ extern void seg6_iptunnel_exit(void);
 extern int seg6_local_init(void);
 extern void seg6_local_exit(void);
 
-extern bool seg6_validate_srh(struct ipv6_sr_hdr *srh, int len);
+extern bool seg6_validate_srh(struct ipv6_sr_hdr *srh, int len, bool reduced);
+#define __seg6_val_srh_2(srh, len) (seg6_validate_srh)(srh, len, false)
+#define __seg6_val_srh_3(srh, len, red) (seg6_validate_srh)(srh, len, red)
+#define __seg6_val_srh_var(_1, _2, _3, NAME, ...) NAME
+#define seg6_validate_srh(...) __seg6_val_srh_var(__VA_ARGS__, __seg6_val_srh_3, __seg6_val_srh_2)(__VA_ARGS__)
 extern int seg6_do_srh_encap(struct sk_buff *skb, struct ipv6_sr_hdr *osrh,
 			     int proto);
 extern int seg6_do_srh_inline(struct sk_buff *skb, struct ipv6_sr_hdr *osrh);
-
+extern int seg6_lookup_nexthop(struct sk_buff *skb, struct in6_addr *nhaddr,
+			       u32 tbl_id);
 #endif

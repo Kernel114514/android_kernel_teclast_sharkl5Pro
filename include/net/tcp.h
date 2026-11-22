@@ -442,6 +442,16 @@ void tcp_parse_options(const struct net *net, const struct sk_buff *skb,
 const u8 *tcp_parse_md5sig_option(const struct tcphdr *th);
 
 /*
+ *	BPF SKB-less helpers
+ */
+u16 tcp_v4_get_syncookie(struct sock *sk, struct iphdr *iph,
+			 struct tcphdr *th, u32 *cookie);
+u16 tcp_v6_get_syncookie(struct sock *sk, struct ipv6hdr *iph,
+			 struct tcphdr *th, u32 *cookie);
+u16 tcp_get_syncookie_mss(struct request_sock_ops *rsk_ops,
+			  const struct tcp_request_sock_ops *af_ops,
+			  struct sock *sk, struct tcphdr *th);
+/*
  *	TCP v4 functions exported for the inet6 API
  */
 
@@ -855,15 +865,35 @@ struct tcp_skb_cb {
 #endif
 		} header;	/* For incoming skbs */
 		struct {
-			__u32 key;
 			__u32 flags;
-			struct bpf_map *map;
+			struct sock *sk_redir;
 			void *data_end;
 		} bpf;
 	};
 };
 
 #define TCP_SKB_CB(__skb)	((struct tcp_skb_cb *)&((__skb)->cb[0]))
+
+static inline void bpf_compute_data_end_sk_skb(struct sk_buff *skb)
+{
+	TCP_SKB_CB(skb)->bpf.data_end = skb->data + skb_headlen(skb);
+}
+
+static inline bool tcp_skb_bpf_ingress(const struct sk_buff *skb)
+{
+	return TCP_SKB_CB(skb)->bpf.flags & BPF_F_INGRESS;
+}
+
+static inline struct sock *tcp_skb_bpf_redirect_fetch(struct sk_buff *skb)
+{
+	return TCP_SKB_CB(skb)->bpf.sk_redir;
+}
+
+static inline void tcp_skb_bpf_redirect_clear(struct sk_buff *skb)
+{
+	TCP_SKB_CB(skb)->bpf.sk_redir = NULL;
+}
+
 
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -972,6 +1002,7 @@ enum tcp_ca_ack_event_flags {
 #define TCP_CONG_NON_RESTRICTED 0x1
 /* Requires ECN/ECT set on all packets */
 #define TCP_CONG_NEEDS_ECN	0x2
+#define TCP_CONG_MASK	(TCP_CONG_NON_RESTRICTED | TCP_CONG_NEEDS_ECN)
 
 union tcp_cc_info;
 
@@ -1028,6 +1059,8 @@ struct tcp_congestion_ops {
 	void (*pkts_acked)(struct sock *sk, const struct ack_sample *sample);
 	/* suggest number of segments for each skb to transmit (optional) */
 	u32 (*tso_segs_goal)(struct sock *sk);
+	/* override sysctl_tcp_min_tso_segs */
+	u32 (*min_tso_segs)(struct sock *sk);
 	/* returns the multiplier used in tcp_sndbuf_expand (optional) */
 	u32 (*sndbuf_expand)(struct sock *sk);
 	/* call when packets are delivered to update cwnd and pacing rate,
@@ -1063,6 +1096,7 @@ u32 tcp_reno_undo_cwnd(struct sock *sk);
 void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 acked);
 extern struct tcp_congestion_ops tcp_reno;
 
+struct tcp_congestion_ops *tcp_ca_find(const char *name);
 struct tcp_congestion_ops *tcp_ca_find_key(u32 key);
 u32 tcp_ca_get_key_by_name(const char *name, bool *ecn_ca);
 #ifdef CONFIG_INET
@@ -2102,6 +2136,16 @@ void tcp_cleanup_ulp(struct sock *sk);
 #define MODULE_ALIAS_TCP_ULP(name)				\
 	__MODULE_INFO(alias, alias_userspace, name);		\
 	__MODULE_INFO(alias, alias_tcp_ulp, "tcp-ulp-" name)
+
+struct sk_msg;
+struct sk_psock;
+
+int tcp_bpf_sendmsg_redir(struct sock *sk, struct sk_msg *msg, u32 bytes,
+			  int flags);
+int tcp_bpf_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
+		    int nonblock, int flags, int *addr_len);
+int __tcp_bpf_recvmsg(struct sock *sk, struct sk_psock *psock,
+		      struct msghdr *msg, int len, int flags);
 
 /* Call BPF_SOCK_OPS program that returns an int. If the return value
  * is < 0, then the BPF op failed (for example if the loaded BPF

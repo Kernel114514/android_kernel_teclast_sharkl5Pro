@@ -227,12 +227,14 @@ static int udp_reuseport_add_sock(struct sock *sk, struct udp_hslot *hslot)
 		    (sk2->sk_bound_dev_if == sk->sk_bound_dev_if) &&
 		    sk2->sk_reuseport && uid_eq(uid, sock_i_uid(sk2)) &&
 		    inet_rcv_saddr_equal(sk, sk2, false)) {
-			return reuseport_add_sock(sk, sk2);
+			return reuseport_add_sock(sk, sk2,
+						  inet_rcv_saddr_any(sk));
 		}
 	}
 
-	return reuseport_alloc(sk);
+	return reuseport_alloc(sk, inet_rcv_saddr_any(sk));
 }
+
 
 /**
  *  udp_lib_get_port  -  UDP/-Lite port lookup for IPv4 and IPv6

@@ -174,10 +174,18 @@ static void veth_get_stats64(struct net_device *dev,
 	rcu_read_unlock();
 }
 
-/* fake multicast ability */
 static void veth_set_multicast_list(struct net_device *dev)
 {
 }
+
+static struct net_device *veth_peer_dev(struct net_device *dev)
+{
+	struct veth_priv *priv = netdev_priv(dev);
+
+	/* Callers must be under RCU read side. */
+	return rcu_dereference(priv->peer);
+}
+
 
 static int veth_open(struct net_device *dev)
 {
@@ -290,7 +298,9 @@ static const struct net_device_ops veth_netdev_ops = {
 	.ndo_get_iflink		= veth_get_iflink,
 	.ndo_features_check	= passthru_features_check,
 	.ndo_set_rx_headroom	= veth_set_rx_headroom,
+	.ndo_get_peer_dev	= veth_peer_dev,
 };
+
 
 #define VETH_FEATURES (NETIF_F_SG | NETIF_F_FRAGLIST | NETIF_F_HW_CSUM | \
 		       NETIF_F_RXCSUM | NETIF_F_SCTP_CRC | NETIF_F_HIGHDMA | \

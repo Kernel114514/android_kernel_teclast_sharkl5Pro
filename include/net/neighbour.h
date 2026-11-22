@@ -490,15 +490,22 @@ static inline int neigh_hh_output(const struct hh_cache *hh, struct sk_buff *skb
 	return dev_queue_xmit(skb);
 }
 
-static inline int neigh_output(struct neighbour *n, struct sk_buff *skb)
+static inline int __neigh_output(struct neighbour *n, struct sk_buff *skb,
+				 bool skip_cache)
 {
 	const struct hh_cache *hh = &n->hh;
 
-	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len)
+	if ((n->nud_state & NUD_CONNECTED) && hh->hh_len && !skip_cache)
 		return neigh_hh_output(hh, skb);
 	else
 		return n->output(n, skb);
 }
+
+#define __neigh_output_dispatch(_1, _2, _3, N, ...) __neigh_output_##N
+#define __neigh_output_2(n, skb) __neigh_output(n, skb, false)
+#define __neigh_output_3(n, skb, skip_cache) __neigh_output(n, skb, skip_cache)
+#define neigh_output(...) __neigh_output_dispatch(__VA_ARGS__, 3, 2)(__VA_ARGS__)
+
 
 static inline struct neighbour *
 __neigh_lookup(struct neigh_table *tbl, const void *pkey, struct net_device *dev, int creat)

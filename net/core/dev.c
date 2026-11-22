@@ -3912,9 +3912,9 @@ drop:
 }
 
 static u32 netif_receive_generic_xdp(struct sk_buff *skb,
+				     struct xdp_buff *xdp,
 				     struct bpf_prog *xdp_prog)
 {
-	struct xdp_buff xdp;
 	u32 act = XDP_DROP;
 	void *orig_data;
 	int hlen, off;
@@ -3934,14 +3934,15 @@ static u32 netif_receive_generic_xdp(struct sk_buff *skb,
 	 */
 	mac_len = skb->data - skb_mac_header(skb);
 	hlen = skb_headlen(skb) + mac_len;
-	xdp.data = skb->data - mac_len;
-	xdp.data_end = xdp.data + hlen;
-	xdp.data_hard_start = skb->data - skb_headroom(skb);
-	orig_data = xdp.data;
+	xdp->data = skb->data - mac_len;
+	xdp->data_end = xdp->data + hlen;
+	xdp->data_hard_start = skb->data - skb_headroom(skb);
+	orig_data = xdp->data;
 
-	act = bpf_prog_run_xdp(xdp_prog, &xdp);
+	act = bpf_prog_run_xdp(xdp_prog, xdp);
 
-	off = xdp.data - orig_data;
+
+	off = xdp->data - orig_data;
 	if (off > 0)
 		__skb_pull(skb, off);
 	else if (off < 0)
@@ -4002,17 +4003,18 @@ static struct static_key generic_xdp_needed __read_mostly;
 int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb)
 {
 	if (xdp_prog) {
-		u32 act = netif_receive_generic_xdp(skb, xdp_prog);
+		struct xdp_buff xdp;
+		u32 act = netif_receive_generic_xdp(skb, &xdp, xdp_prog);
 		int err;
 
 		if (act != XDP_PASS) {
 			switch (act) {
 			case XDP_REDIRECT:
 				err = xdp_do_generic_redirect(skb->dev, skb,
-							      xdp_prog);
+							      &xdp, xdp_prog);
 				if (err)
 					goto out_redir;
-			/* fallthru to submit skb */
+				break;
 			case XDP_TX:
 				generic_xdp_tx(skb, xdp_prog);
 				break;
@@ -4021,6 +4023,7 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb)
 		}
 	}
 	return XDP_PASS;
+
 out_redir:
 	kfree_skb(skb);
 	return XDP_DROP;
@@ -4492,6 +4495,33 @@ drop:
 out:
 	return ret;
 }
+
+/**
+ *	netif_receive_skb_core - special purpose version of netif_receive_skb
+ *	@skb: buffer to process
+ *
+ *	More direct receive version of netif_receive_skb().  It should
+ *	only be used by callers that have a need to skip RPS and Generic XDP.
+ *	Caller must also take care of handling if (page_is_)pfmemalloc.
+ *
+ *	This function may only be called from softirq context and interrupts
+ *	should be enabled.
+ *
+ *	Return values (usually ignored):
+ *	NET_RX_SUCCESS: no congestion
+ *	NET_RX_DROP: packet was dropped
+ */
+int netif_receive_skb_core(struct sk_buff *skb)
+{
+	int ret;
+
+	rcu_read_lock();
+	ret = __netif_receive_skb_core(skb, false);
+	rcu_read_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL(netif_receive_skb_core);
 
 static int __netif_receive_skb(struct sk_buff *skb)
 {
@@ -7122,6 +7152,12 @@ int dev_change_xdp_fd(struct net_device *dev, struct netlink_ext_ack *extack,
 
 	return err;
 }
+
+int bpf_xdp_link_attach(const union bpf_attr *attr, struct bpf_prog *prog)
+{
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL_GPL(bpf_xdp_link_attach);
 
 /**
  *	dev_new_index	-	allocate an ifindex

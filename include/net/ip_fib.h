@@ -99,6 +99,15 @@ struct fib_nh {
 	struct lwtunnel_state	*nh_lwtstate;
 };
 
+#define fib_nh_dev nh_dev
+#define fib_nh_flags nh_flags
+#define fib_nh_scope nh_scope
+#define fib_nh_weight nh_weight
+#define fib_nh_upper_bound nh_upper_bound
+#define fib_nh_oif nh_oif
+#define fib_nh_gw4 nh_gw
+#define fib_nh_lws nh_lwtstate
+
 /*
  * This structure contains data shared by many of routes.
  */
@@ -427,5 +436,7 @@ static inline void fib_proc_exit(struct net *net)
 {
 }
 #endif
+ 
+u32 ip_mtu_from_fib_result(struct fib_result *res, __be32 daddr);
 
 #endif  /* _NET_FIB_H */

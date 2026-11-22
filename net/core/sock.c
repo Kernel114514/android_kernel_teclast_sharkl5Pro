@@ -136,6 +136,8 @@
 
 #include <linux/filter.h>
 #include <net/sock_reuseport.h>
+#include <net/bpf_sk_storage.h>
+
 
 #include <trace/events/sock.h>
 
@@ -558,6 +560,48 @@ struct dst_entry *sk_dst_check(struct sock *sk, u32 cookie)
 }
 EXPORT_SYMBOL(sk_dst_check);
 
+static int sock_bindtoindex_locked(struct sock *sk, int ifindex)
+{
+	int ret = -ENOPROTOOPT;
+#ifdef CONFIG_NETDEVICES
+	struct net *net = sock_net(sk);
+
+	/* Sorry... */
+	ret = -EPERM;
+	if (!ns_capable(net->user_ns, CAP_NET_RAW))
+		goto out;
+
+	ret = -EINVAL;
+	if (ifindex < 0)
+		goto out;
+
+	sk->sk_bound_dev_if = ifindex;
+	if (sk->sk_prot->rehash)
+		sk->sk_prot->rehash(sk);
+	sk_dst_reset(sk);
+
+	ret = 0;
+
+out:
+#endif
+
+	return ret;
+}
+
+int sock_bindtoindex(struct sock *sk, int ifindex, bool lock_sk)
+{
+	int ret;
+
+	if (lock_sk)
+		lock_sock(sk);
+	ret = sock_bindtoindex_locked(sk, ifindex);
+	if (lock_sk)
+		release_sock(sk);
+
+	return ret;
+}
+EXPORT_SYMBOL(sock_bindtoindex);
+
 static int sock_setbindtodevice(struct sock *sk, char __user *optval,
 				int optlen)
 {
@@ -566,15 +610,6 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
 	struct net *net = sock_net(sk);
 	char devname[IFNAMSIZ];
 	int index;
-
-	/* Sorry... */
-	ret = -EPERM;
-	if (!ns_capable(net->user_ns, CAP_NET_RAW))
-		goto out;
-
-	ret = -EINVAL;
-	if (optlen < 0)
-		goto out;
 
 	/* Bind this socket to a particular device like "eth0",
 	 * as specified in the passed interface name. If the
@@ -603,15 +638,11 @@ static int sock_setbindtodevice(struct sock *sk, char __user *optval,
 			goto out;
 	}
 
-	lock_sock(sk);
-	sk->sk_bound_dev_if = index;
-	sk_dst_reset(sk);
-	release_sock(sk);
-
-	ret = 0;
+	return sock_bindtoindex(sk, index, true);
 
 out:
 #endif
+
 
 	return ret;
 }
@@ -656,13 +687,6 @@ out:
 	return ret;
 }
 
-static inline void sock_valbool_flag(struct sock *sk, int bit, int valbool)
-{
-	if (valbool)
-		sock_set_flag(sk, bit);
-	else
-		sock_reset_flag(sk, bit);
-}
 
 bool sk_mc_loop(struct sock *sk)
 {
@@ -1322,8 +1346,9 @@ int sock_getsockopt(struct socket *sock, int level, int optname,
 		return sock_getbindtodevice(sk, optval, optlen, len);
 
 	case SO_GET_FILTER:
-		len = sk_get_filter(sk, (struct sock_filter __user *)optval, len);
+		len = sk_get_filter(sk, USER_SOCKPTR(optval), len);
 		if (len < 0)
+
 			return len;
 
 		goto lenout;
@@ -1564,7 +1589,12 @@ static void __sk_destruct(struct rcu_head *head)
 
 	sock_disable_timestamp(sk, SK_FLAGS_TIMESTAMP);
 
+#ifdef CONFIG_BPF_SYSCALL
+	bpf_sk_storage_free(sk);
+#endif
+
 	if (atomic_read(&sk->sk_omem_alloc))
+
 		pr_debug("%s: optmem leakage (%d bytes) detected\n",
 			 __func__, atomic_read(&sk->sk_omem_alloc));
 
@@ -1714,7 +1744,14 @@ struct sock *sk_clone_lock(const struct sock *sk, const gfp_t priority)
 		}
 		RCU_INIT_POINTER(newsk->sk_reuseport_cb, NULL);
 
+		if (bpf_sk_storage_clone(sk, newsk)) {
+			sk_free_unlock_clone(newsk);
+			newsk = NULL;
+			goto out;
+		}
+
 		newsk->sk_err	   = 0;
+
 		newsk->sk_err_soft = 0;
 		newsk->sk_priority = 0;
 		newsk->sk_incoming_cpu = raw_smp_processor_id();
@@ -1900,6 +1937,15 @@ void sock_efree(struct sk_buff *skb)
 	sock_put(skb->sk);
 }
 EXPORT_SYMBOL(sock_efree);
+
+#ifdef CONFIG_INET
+void sock_pfree(struct sk_buff *skb)
+{
+	if (sk_is_refcounted(skb->sk))
+		sock_gen_put(skb->sk);
+}
+EXPORT_SYMBOL(sock_pfree);
+#endif /* CONFIG_INET */
 
 kuid_t sock_i_uid(struct sock *sk)
 {
@@ -3239,10 +3285,32 @@ void proto_unregister(struct proto *prot)
 	if (prot->twsk_prot != NULL && prot->twsk_prot->twsk_slab != NULL) {
 		kmem_cache_destroy(prot->twsk_prot->twsk_slab);
 		kfree(prot->twsk_prot->twsk_slab_name);
-		prot->twsk_prot->twsk_slab = NULL;
 	}
 }
 EXPORT_SYMBOL(proto_unregister);
+
+
+int sock_load_diag_module(int family, int protocol)
+{
+	if (!protocol) {
+		if (!sock_is_registered(family))
+			return -ENOENT;
+
+		return request_module("net-pf-%d-proto-%d-type-%d", PF_NETLINK,
+				      NETLINK_SOCK_DIAG, family);
+	}
+
+#ifdef CONFIG_INET
+	if (family == AF_INET &&
+	    !rcu_access_pointer(inet_protos[protocol]))
+		return -ENOENT;
+#endif
+
+	return request_module("net-pf-%d-proto-%d-type-%d-%d", PF_NETLINK,
+			      NETLINK_SOCK_DIAG, family, protocol);
+}
+EXPORT_SYMBOL(sock_load_diag_module);
+
 
 #ifdef CONFIG_PROC_FS
 static void *proto_seq_start(struct seq_file *seq, loff_t *pos)

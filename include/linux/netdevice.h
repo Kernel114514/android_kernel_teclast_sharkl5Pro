@@ -44,6 +44,7 @@
 #include <net/dcbnl.h>
 #endif
 #include <net/netprio_cgroup.h>
+#include <net/xdp.h>
 
 #include <linux/netdev_features.h>
 #include <linux/neighbour.h>
@@ -686,6 +687,7 @@ struct netdev_rx_queue {
 #endif
 	struct kobject			kobj;
 	struct net_device		*dev;
+	struct xdp_rxq_info		xdp_rxq;
 } ____cacheline_aligned_in_smp;
 
 /*
@@ -777,10 +779,10 @@ enum tc_setup_type {
 	TC_SETUP_CLSBPF,
 };
 
-/* These structures hold the attributes of xdp state that are being passed
- * to the netdevice through the xdp op.
+/* These structures hold the attributes of bpf state that are being passed
+ * to the netdevice through the bpf op.
  */
-enum xdp_netdev_command {
+enum bpf_netdev_command {
 	/* Set or clear a bpf program used in the earliest stages of packet
 	 * rx. The prog will have been loaded as BPF_PROG_TYPE_XDP. The callee
 	 * is responsible for calling bpf_prog_put on any old progs that are
@@ -795,12 +797,24 @@ enum xdp_netdev_command {
 	 * is equivalent to XDP_ATTACHED_DRV.
 	 */
 	XDP_QUERY_PROG,
+	XDP_QUERY_PROG_HW,
+	/* BPF program for offload callbacks, invoked at program load time. */
+	BPF_OFFLOAD_MAP_ALLOC,
+	BPF_OFFLOAD_MAP_FREE,
+	XDP_QUERY_XSK_UMEM,
+	XDP_SETUP_XSK_UMEM,
 };
 
-struct netlink_ext_ack;
+#define xdp_netdev_command bpf_netdev_command
 
-struct netdev_xdp {
-	enum xdp_netdev_command command;
+struct netlink_ext_ack;
+struct xdp_dev_bulk_queue;
+struct xdp_frame;
+struct bpf_offloaded_map;
+struct xdp_umem;
+
+struct netdev_bpf {
+	enum bpf_netdev_command command;
 	union {
 		/* XDP_SETUP_PROG */
 		struct {
@@ -812,9 +826,21 @@ struct netdev_xdp {
 		struct {
 			u8 prog_attached;
 			u32 prog_id;
+			u32 prog_flags;
 		};
+		/* BPF_OFFLOAD_MAP_ALLOC, BPF_OFFLOAD_MAP_FREE */
+		struct {
+			struct bpf_offloaded_map *offmap;
+		};
+		/* XDP_QUERY_XSK_UMEM, XDP_SETUP_XSK_UMEM */
+		struct {
+			struct xdp_umem *umem;
+			u16 queue_id;
+		} xsk;
 	};
 };
+
+#define netdev_xdp netdev_bpf
 
 #ifdef CONFIG_XFRM_OFFLOAD
 struct xfrmdev_ops {
@@ -1307,12 +1333,16 @@ struct net_device_ops {
 						       struct sk_buff *skb);
 	void			(*ndo_set_rx_headroom)(struct net_device *dev,
 						       int needed_headroom);
-	int			(*ndo_xdp)(struct net_device *dev,
-					   struct netdev_xdp *xdp);
-	int			(*ndo_xdp_xmit)(struct net_device *dev,
-						struct xdp_buff *xdp);
+	int			(*ndo_bpf)(struct net_device *dev,
+					   struct netdev_bpf *bpf);
+#define ndo_xdp ndo_bpf
+	int			(*ndo_xdp_xmit)(struct net_device *dev, int n,
+						struct xdp_frame **xdp,
+						u32 flags);
 	void			(*ndo_xdp_flush)(struct net_device *dev);
+	struct net_device *	(*ndo_get_peer_dev)(struct net_device *dev);
 };
+
 
 /**
  * enum net_device_priv_flags - &struct net_device priv_flags
@@ -1820,6 +1850,8 @@ struct net_device {
 #endif
 	unsigned int		tx_queue_len;
 	spinlock_t		tx_global_lock;
+
+	struct xdp_dev_bulk_queue __percpu *xdp_bulkq;
 	int			watchdog_timeo;
 
 #ifdef CONFIG_XPS
@@ -2455,6 +2487,22 @@ static inline int dev_recursion_level(void)
 {
 	return this_cpu_read(xmit_recursion);
 }
+
+static inline bool dev_xmit_recursion(void)
+{
+	return unlikely(this_cpu_read(xmit_recursion) > XMIT_RECURSION_LIMIT);
+}
+
+static inline void dev_xmit_recursion_inc(void)
+{
+	this_cpu_inc(xmit_recursion);
+}
+
+static inline void dev_xmit_recursion_dec(void)
+{
+	this_cpu_dec(xmit_recursion);
+}
+
 
 struct net_device *dev_get_by_index(struct net *net, int ifindex);
 struct net_device *__dev_get_by_index(struct net *net, int ifindex);
@@ -3214,6 +3262,12 @@ static inline int netif_set_real_num_rx_queues(struct net_device *dev,
 }
 #endif
 
+static inline struct netdev_rx_queue *
+__netif_get_rx_queue(struct net_device *dev, unsigned int rxq)
+{
+	return dev->_rx + rxq;
+}
+
 #ifdef CONFIG_SYSFS
 static inline unsigned int get_netdev_rx_queue_index(
 		struct netdev_rx_queue *queue)
@@ -3281,6 +3335,7 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff *skb);
 int netif_rx(struct sk_buff *skb);
 int netif_rx_ni(struct sk_buff *skb);
 int netif_receive_skb(struct sk_buff *skb);
+int netif_receive_skb_core(struct sk_buff *skb);
 gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb);
 void napi_gro_flush(struct napi_struct *napi, bool flush_old);
 struct sk_buff *napi_get_frags(struct napi_struct *napi);
@@ -3330,6 +3385,8 @@ typedef int (*xdp_op_t)(struct net_device *dev, struct netdev_xdp *xdp);
 int dev_change_xdp_fd(struct net_device *dev, struct netlink_ext_ack *extack,
 		      int fd, u32 flags);
 u8 __dev_xdp_attached(struct net_device *dev, xdp_op_t xdp_op, u32 *prog_id);
+union bpf_attr;
+int bpf_xdp_link_attach(const union bpf_attr *attr, struct bpf_prog *prog);
 
 int __dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 int dev_forward_skb(struct net_device *dev, struct sk_buff *skb);

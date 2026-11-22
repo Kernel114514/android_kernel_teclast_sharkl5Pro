@@ -432,12 +432,20 @@ static inline void ip_tunnel_info_opts_get(void *to,
 	memcpy(to, info + 1, info->options_len);
 }
 
-static inline void ip_tunnel_info_opts_set(struct ip_tunnel_info *info,
-					   const void *from, int len)
+static inline void __ip_tunnel_info_opts_set(struct ip_tunnel_info *info,
+					     const void *from, int len,
+					     __be16 flags)
 {
 	memcpy(ip_tunnel_info_opts(info), from, len);
 	info->options_len = len;
+	info->key.tun_flags |= flags;
 }
+
+#define __ip_tunnel_opts_dispatch(_1, _2, _3, _4, N, ...) __ip_tunnel_opts_##N
+#define __ip_tunnel_opts_3(info, from, len) __ip_tunnel_info_opts_set(info, from, len, 0)
+#define __ip_tunnel_opts_4(info, from, len, flags) __ip_tunnel_info_opts_set(info, from, len, flags)
+#define ip_tunnel_info_opts_set(...) __ip_tunnel_opts_dispatch(__VA_ARGS__, 4, 3)(__VA_ARGS__)
+
 
 static inline struct ip_tunnel_info *lwt_tun_info(struct lwtunnel_state *lwtstate)
 {
@@ -477,11 +485,14 @@ static inline void ip_tunnel_info_opts_get(void *to,
 {
 }
 
-static inline void ip_tunnel_info_opts_set(struct ip_tunnel_info *info,
-					   const void *from, int len)
+static inline void __ip_tunnel_info_opts_set(struct ip_tunnel_info *info,
+					     const void *from, int len,
+					     __be16 flags)
 {
 	info->options_len = 0;
+	info->key.tun_flags |= flags;
 }
+
 
 #endif /* CONFIG_INET */
 

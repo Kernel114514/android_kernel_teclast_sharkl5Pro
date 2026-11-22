@@ -25,6 +25,8 @@
 #include <net/inet_timewait_sock.h>
 #include <uapi/linux/tcp.h>
 
+struct saved_syn;
+
 static inline struct tcphdr *tcp_hdr(const struct sk_buff *skb)
 {
 	return (struct tcphdr *)skb_transport_header(skb);
@@ -182,6 +184,9 @@ struct tcp_sock {
 				 * sum(delta(snd_una)), or how many bytes
 				 * were acked.
 				 */
+	u32	dsack_dups;	/* RFC4898 tcpEStatsStackDSACKDups
+				 * total number of DSACK blocks received
+				 */
  	u32	snd_una;	/* First byte we want an ack for	*/
  	u32	snd_sml;	/* Last byte of the most recently transmitted small packet */
 	u32	rcv_tstamp;	/* timestamp of last received ACK (for keepalives) */
@@ -270,6 +275,7 @@ struct tcp_sock {
 				 * receiver in Recovery. */
 	u32	prr_out;	/* Total number of pkts sent during Recovery. */
 	u32	delivered;	/* Total data packets delivered incl. rexmits */
+	u32	delivered_ce;	/* Like the above but only ECE marked packets */
 	u32	lost;		/* Total data packets lost incl. rexmits */
 	u32	app_limited;	/* limited until "delivered" reaches this val */
 	u64	first_tx_mstamp;  /* start of window send phase */
@@ -325,6 +331,16 @@ struct tcp_sock {
 
 	int			linger2;
 
+/* Sock_ops bpf program related variables */
+#ifdef CONFIG_BPF
+	u8	bpf_sock_ops_cb_flags;  /* Control calling BPF programs
+					 * values defined in uapi/linux/tcp.h
+					 */
+#define BPF_SOCK_OPS_TEST_FLAG(TP, ARG) (TP->bpf_sock_ops_cb_flags & ARG)
+#else
+#define BPF_SOCK_OPS_TEST_FLAG(TP, ARG) 0
+#endif
+
 /* Receiver side RTT estimation */
 	struct {
 		u32	rtt_us;
@@ -362,7 +378,7 @@ struct tcp_sock {
 	 * socket. Used to retransmit SYNACKs etc.
 	 */
 	struct request_sock *fastopen_rsk;
-	u32	*saved_syn;
+	struct saved_syn *saved_syn;
 };
 
 enum tsq_enum {
@@ -439,6 +455,12 @@ static inline void tcp_saved_syn_free(struct tcp_sock *tp)
 	tp->saved_syn = NULL;
 }
 
+static inline u32 tcp_saved_syn_len(const struct saved_syn *saved_syn)
+{
+	return saved_syn->mac_hdrlen + saved_syn->network_hdrlen +
+		saved_syn->tcp_hdrlen;
+}
+
 struct sk_buff *tcp_get_timestamping_opt_stats(const struct sock *sk);
 
 static inline u16 tcp_mss_clamp(const struct tcp_sock *tp, u16 mss)
@@ -453,5 +475,8 @@ static inline u16 tcp_mss_clamp(const struct tcp_sock *tp, u16 mss)
 
 int tcp_skb_shift(struct sk_buff *to, struct sk_buff *from, int pcount,
 		  int shiftlen);
+
+int tcp_sock_set_keepidle_locked(struct sock *sk, int val);
+int tcp_sock_set_keepidle(struct sock *sk, int val);
 
 #endif	/* _LINUX_TCP_H */

@@ -213,7 +213,10 @@ struct sock_common {
 		struct hlist_node	skc_node;
 		struct hlist_nulls_node skc_nulls_node;
 	};
-	int			skc_tx_queue_mapping;
+	unsigned short		skc_tx_queue_mapping;
+#ifdef CONFIG_XPS
+	unsigned short		skc_rx_queue_mapping;
+#endif
 	union {
 		int		skc_incoming_cpu;
 		u32		skc_rcv_wnd;
@@ -325,6 +328,9 @@ struct sock {
 #define sk_nulls_node		__sk_common.skc_nulls_node
 #define sk_refcnt		__sk_common.skc_refcnt
 #define sk_tx_queue_mapping	__sk_common.skc_tx_queue_mapping
+#ifdef CONFIG_XPS
+#define sk_rx_queue_mapping	__sk_common.skc_rx_queue_mapping
+#endif
 
 #define sk_dontcopy_begin	__sk_common.skc_dontcopy_begin
 #define sk_dontcopy_end		__sk_common.skc_dontcopy_end
@@ -437,14 +443,14 @@ struct sock {
 #define SK_FL_TYPE_MASK    0xffff0000
 #endif
 
-	unsigned int		sk_padding : 1,
+	u8			sk_padding : 1,
 				sk_kern_sock : 1,
 				sk_no_check_tx : 1,
 				sk_no_check_rx : 1,
-				sk_userlocks : 4,
-				sk_protocol  : 8,
-				sk_type      : 16;
-#define SK_PROTOCOL_MAX U8_MAX
+				sk_userlocks : 4;
+	u8			sk_pacing_shift;
+	u16			sk_type;
+	u16			sk_protocol;
 	u16			sk_gso_max_segs;
 	unsigned long	        sk_lingertime;
 	struct proto		*sk_prot_creator;
@@ -480,7 +486,11 @@ struct sock {
 						  struct sk_buff *skb);
 	void                    (*sk_destruct)(struct sock *sk);
 	struct sock_reuseport __rcu	*sk_reuseport_cb;
+#ifdef CONFIG_BPF_SYSCALL
+	struct bpf_local_storage __rcu	*sk_bpf_storage;
+#endif
 	struct rcu_head		sk_rcu;
+
 };
 
 enum sk_pacing {
@@ -493,6 +503,20 @@ enum sk_pacing {
 
 #define rcu_dereference_sk_user_data(sk)	rcu_dereference(__sk_user_data((sk)))
 #define rcu_assign_sk_user_data(sk, ptr)	rcu_assign_pointer(__sk_user_data((sk)), ptr)
+
+/* Pointer stored in sk_user_data might not be suitable for copying
+ * when cloning the socket. For instance, it can point to a reference
+ * counted object. sk_user_data bottom bit is set if pointer must not
+ * be copied.
+ */
+#define SK_USER_DATA_NOCOPY	1UL
+#define SK_USER_DATA_BPF	2UL	/* Managed by BPF */
+#define SK_USER_DATA_PTRMASK	~(SK_USER_DATA_NOCOPY | SK_USER_DATA_BPF)
+
+static inline bool sk_user_data_is_nocopy(const struct sock *sk)
+{
+	return ((uintptr_t)sk->sk_user_data & SK_USER_DATA_NOCOPY);
+}
 
 /*
  * SK_CAN_REUSE and SK_NO_REUSE on a socket mean that the socket is OK
@@ -805,7 +829,17 @@ static inline void sock_reset_flag(struct sock *sk, enum sock_flags flag)
 	__clear_bit(flag, &sk->sk_flags);
 }
 
+static inline void sock_valbool_flag(struct sock *sk, enum sock_flags bit,
+				     int valbool)
+{
+	if (valbool)
+		sock_set_flag(sk, bit);
+	else
+		sock_reset_flag(sk, bit);
+}
+
 static inline bool sock_flag(const struct sock *sk, enum sock_flags flag)
+
 {
 	return test_bit(flag, &sk->sk_flags);
 }
@@ -1140,6 +1174,8 @@ struct proto {
 
 int proto_register(struct proto *prot, int alloc_slab);
 void proto_unregister(struct proto *prot);
+int sock_load_diag_module(int family, int protocol);
+
 
 #ifdef SOCK_REFCNT_DEBUG
 static inline void sk_refcnt_debug_inc(struct sock *sk)
@@ -1670,6 +1706,8 @@ static inline int sk_receive_skb(struct sock *sk, struct sk_buff *skb,
 	return __sk_receive_skb(sk, skb, nested, 1, true);
 }
 
+#define NO_QUEUE_MAPPING	USHRT_MAX
+
 static inline void sk_tx_queue_set(struct sock *sk, int tx_queue)
 {
 	sk->sk_tx_queue_mapping = tx_queue;
@@ -1677,12 +1715,36 @@ static inline void sk_tx_queue_set(struct sock *sk, int tx_queue)
 
 static inline void sk_tx_queue_clear(struct sock *sk)
 {
-	sk->sk_tx_queue_mapping = -1;
+	sk->sk_tx_queue_mapping = NO_QUEUE_MAPPING;
 }
 
 static inline int sk_tx_queue_get(const struct sock *sk)
 {
-	return sk ? sk->sk_tx_queue_mapping : -1;
+	if (sk && sk->sk_tx_queue_mapping != NO_QUEUE_MAPPING)
+		return sk->sk_tx_queue_mapping;
+
+	return -1;
+}
+
+static inline void sk_rx_queue_set(struct sock *sk, const struct sk_buff *skb)
+{
+#ifdef CONFIG_XPS
+	if (skb_rx_queue_recorded(skb)) {
+		u16 rx_queue = skb_get_rx_queue(skb);
+
+		if (WARN_ON_ONCE(rx_queue == NO_QUEUE_MAPPING))
+			return;
+
+		sk->sk_rx_queue_mapping = rx_queue;
+	}
+#endif
+}
+
+static inline void sk_rx_queue_clear(struct sock *sk)
+{
+#ifdef CONFIG_XPS
+	sk->sk_rx_queue_mapping = NO_QUEUE_MAPPING;
+#endif
 }
 
 static inline void sk_set_socket(struct sock *sk, struct socket *sock)
@@ -2364,6 +2426,25 @@ static inline bool sk_fullsock(const struct sock *sk)
 	return (1 << sk->sk_state) & ~(TCPF_TIME_WAIT | TCPF_NEW_SYN_RECV);
 }
 
+static inline bool sk_is_refcounted(struct sock *sk)
+{
+	/* Only full sockets have sk->sk_flags. */
+	return !sk_fullsock(sk) || !sock_flag(sk, SOCK_RCU_FREE);
+}
+
+void sock_gen_put(struct sock *sk);
+void sock_pfree(struct sk_buff *skb);
+
+static inline bool
+skb_sk_is_prefetched(struct sk_buff *skb)
+{
+#ifdef CONFIG_INET
+	return skb->destructor == sock_pfree;
+#else
+	return false;
+#endif /* CONFIG_INET */
+}
+
 /* This helper checks if a socket is a LISTEN or NEW_SYN_RECV
  * SYNACK messages can be attached to either ones (depending on SYNCOOKIE)
  */
@@ -2429,4 +2510,7 @@ extern int sysctl_optmem_max;
 extern __u32 sysctl_wmem_default;
 extern __u32 sysctl_rmem_default;
 
+int sock_bindtoindex(struct sock *sk, int ifindex, bool lock_sk);
+
 #endif	/* _SOCK_H */
+
